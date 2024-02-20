@@ -1,0 +1,58 @@
+"Last Merchant Cleared Date","Advance Status",AdvanceID,"Merchant Name",Frequency,"Repayment Type","Draft Amount","Return Code","Return Date","Syn Gross Amount","Syn Net Amount","Syn Cleared Date","Syndicated Amt","Syndicate Purchase Price","Syndicate Net RTR Remain"
+2024-02-09,In-Repayment,6299827,"IAG Construction Inc",Daily,ACH,"$1,521.43",,,$135.23,$131.18,2024-02-13,"$12,000.00","$13,440.00","$8,789.12"
+2024-02-09,In-Repayment,6571941,"ArtLog, Inc.",Daily,ACH,"$1,665.00",,,$108.00,$104.76,2024-02-13,"$12,000.00","$13,440.00","$15,923.52"
+2024-02-09,In-Repayment,6566115,"G2D Development Corp",Daily,ACH,"$8,384.35",,,$128.23,$124.38,2024-02-13,"$13,000.00","$13,913.13","$17,662.58"
+2024-02-09,In-Repayment,6419146,"Galaxy Venture Capital, LLC",Daily,ACH,$241.67,,,$16.01,$15.53,2024-02-13,"$1,325.00","$1,484.00","$1,366.64"
+2024-02-09,In-Repayment,6297568,"Champion Contractors, LLC",Daily,ACH,"$2,579.37",,,$72.23,$70.06,2024-02-13,"$7,000.00","$7,210.00","$4,763.78"
+2024-02-08,In-Repayment,6495891,"Acosta Angeli Construction INC.",Daily,ACH,"$3,916.89",,,$112.88,$109.49,2024-02-13,"$10,000.00","$10,900.00","$13,577.07"
+2024-02-08,In-Repayment,6418779,"CCBBQ Restaurant LLC",Weekly,ACH,"$12,750.00",,,$297.49,$288.57,2024-02-13,"$7,000.00","$7,560.00","$6,637.23"
+2024-02-09,In-Repayment,6326805,"Wires Only INC",Weekly,ACH,"$1,500.00",,,$19.09,$18.52,2024-02-13,"$7,000.00","$7,490.00","$7,198.18"
+2024-02-08,In-Repayment,6213677,"Brick & Cork, Inc.",Daily,ACH,$191.59,,,$22.53,$21.86,2024-02-13,"$2,000.00","$2,240.00","$1,049.43"
+2024-02-09,"Paid In Full",6215781,"Ravi GI Associates PA LLP",Daily,ACH,"$2,235.00",,,$0.00,$0.00,2024-02-13,"$7,000.00","$7,700.00",$0.00
+2024-02-09,In-Repayment,6416036,"Livecare, INC.",Daily,ACH,"$2,414.97",,,$77.28,$74.96,2024-02-13,"$8,000.00","$8,807.20","$8,545.50"
+2024-02-09,In-Repayment,6497864,"Gorilla Gadgets, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$6,000.00","$6,660.00","$6,741.50"
+2024-01-23,In-Repayment,6397021,"Strange Bird LLC",Weekly,ACH,$0.00,R29,2024-02-12,$0.00,$0.00,2024-01-26,"$10,000.00","$11,200.00","$10,988.29"
+2024-02-06,In-Repayment,6354539,"Controlled Environments Construction, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$7,000.00","$7,840.00","$6,542.65"
+2024-02-09,In-Repayment,6525893,"Strategic Print Solutions, INC.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$10,000.00","$10,700.00","$12,658.50"
+2024-02-07,In-Repayment,6105737,"Blackhat Chimney & Fireplace Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-12,"$7,000.00","$7,350.00","$3,078.14"
+2024-02-09,In-Repayment,6467111,"Carolina Grading Service, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$7,000.00","$7,280.00","$6,844.32"
+2024-02-09,In-Repayment,6402126,"GDCatering LLC",Daily,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$2,000.00","$2,000.00","$2,218.08"
+2024-02-05,In-Repayment,6291282,"S1 Security Group Inc",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-08,"$7,000.00","$7,630.00","$4,786.96"
+2024-02-06,In-Repayment,6498489,"Eclub Deals Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$6,000.00","$6,660.00","$7,011.17"
+2024-02-06,In-Repayment,6411387,"Synergy 768 Inc",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$11,000.00","$12,100.00","$11,950.40"
+2024-02-07,In-Repayment,6271935,"Concept 32, INC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-12,"$5,000.00","$5,594.00","$4,113.18"
+2024-02-09,In-Repayment,6600197,"Carolina Grading Service, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$8,000.00","$8,320.00","$9,578.06"
+2024-02-02,In-Repayment,6012832,"Amany Convenience LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-07,"$4,000.00","$4,480.00","$2,034.42"
+2024-02-06,In-Repayment,6484948,"Imperium Enterprises, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$3,000.00","$3,180.00","$3,120.98"
+2024-02-05,In-Repayment,6401612,"Tresna Group Corporation",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-08,"$3,500.00","$3,920.00","$3,152.13"
+2024-02-05,In-Repayment,5745916,"Rallis, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-08,"$6,000.00","$6,360.00","$5,279.18"
+2024-02-09,In-Repayment,6224404,"American Dental of LaGrange, LLC",Daily,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$4,000.00","$4,480.00","$2,211.95"
+2024-02-06,In-Repayment,6502050,"American Fundraising Group LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$8,000.00","$8,374.13","$9,030.70"
+2024-02-05,In-Repayment,6031182,"Axispoint INC And Subsidiaries",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-08,"$10,000.00","$10,984.00","$8,606.33"
+2024-02-06,In-Repayment,6380312,"Peachy Athletic, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$4,000.00","$4,360.00","$3,395.67"
+,In-Repayment,6615841,"Lettus LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,,"$5,000.00","$5,550.00","$6,984.00"
+2024-02-06,In-Repayment,6465735,"Steve Hightower Family Farms, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-09,"$4,000.00","$4,480.00","$4,656.00"
+2024-01-30,In-Repayment,6401344,"N & S International Company Corp",Weekly,ACH,$0.00,R01,2024-02-09,$0.00,$0.00,2024-02-02,"$2,500.00","$2,700.00","$2,717.11"
+2024-02-05,In-Repayment,6267975,"D.A.O. Accounting, Consulting, and Taxation, Inc",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-08,"$5,000.00","$5,600.00","$4,219.50"
+2024-02-09,In-Repayment,6496306,"Apex Industrial Facility Services LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$9,000.00","$9,720.00","$10,694.25"
+2024-01-09,In-Repayment,6070330,"Maryland Medical Day Services, LLC.",Weekly,ACH,$0.00,R16,2024-02-06,$0.00,$0.00,2024-01-12,"$6,000.00","$6,513.96","$4,852.43"
+2024-02-05,In-Repayment,6005456,"United Security Specialists, Inc.",Daily,ACH,$0.00,R01,2024-02-05,$0.00,$0.00,2024-02-12,"$7,000.00","$7,840.00","$5,344.81"
+2024-02-07,In-Repayment,6453737,"McQueen Companies LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-12,"$12,000.00","$13,238.64","$13,367.82"
+2024-02-09,In-Repayment,6345571,"Kaival Brands Innovations Group, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-14,"$12,000.00","$13,200.00","$10,775.32"
+2023-12-07,"Paid In Full",6150365,"JamBah Imports LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2023-12-12,"$3,000.00","$3,330.00",$0.02
+2024-01-31,"Paid In Full",6038646,"Certified Mailing Solutions, Inc.",Daily,ACH,$0.00,R01,2024-02-05,$0.00,$0.00,2024-02-06,"$7,000.00","$7,560.00",$0.00
+2024-01-02,"Paid In Full",6142711,"McQueen Companies LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-01-05,"$9,000.00","$9,990.00",$0.00
+2024-02-07,"Paid In Full",6042550,"Water Wheel Rentals, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-02-12,"$5,000.00","$5,600.00",$0.00
+2024-01-31,"Paid In Full",6236461,"Certified Mailing Solutions, Inc.",Daily,ACH,$0.00,R01,2024-02-05,$0.00,$0.00,2024-02-06,"$8,000.00","$8,800.00",$0.00
+2023-12-28,"Paid In Full",6121887,"Carolina Grading Service, Inc.",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-01-03,"$7,000.00","$7,280.00",$0.00
+2024-01-09,"Paid In Full",6003982,"Gorilla Gadgets, LLC",Weekly,ACH,$0.00,,,$0.00,$0.00,2024-01-12,"$7,000.00","$7,840.00",$0.00
+2024-01-31,"Paid In Full",6218166,"Acosta Angeli Construction INC.",Daily,ACH,$0.00,,,$0.00,$0.00,2024-02-05,"$8,000.00","$8,720.00",$0.00
+2023-11-09,"Paid In Full",6016673,"D.A.O. Accounting, Consulting, and Taxation, Inc",Weekly,ACH,$0.00,,,$0.00,$0.00,2023-11-14,"$3,000.00","$3,360.00",$0.00
+2024-02-01,"Paid In Full",6162372,"ArtLog, Inc.",Daily,ACH,$0.00,,,$0.00,$0.00,2024-02-07,"$10,000.00","$11,200.00",$0.00
+2024-01-09,"In Legal",6240777,"Care At Home Private Care LLC",Daily,ACH,$0.00,R01,2024-01-19,$0.00,$0.00,2024-01-12,"$6,000.00","$6,720.00","$5,555.69"
+2023-11-29,"In Legal",5997374,"Lat-Depot LLC",Weekly,ACH,$0.00,R03,2024-01-16,$0.00,$0.00,2023-12-04,"$4,000.00","$4,472.00","$1,862.40"
+2023-12-27,"In Legal",6439859,"Sotos Drywall Hanging And Finish Inc",Daily,ACH,$0.00,R02,2024-01-03,$0.00,$0.00,2024-01-02,"$5,000.00","$5,550.00","$6,731.11"
+2024-01-12,"In Legal",6254495,"Integrated USA Systems, LLC",Daily,ACH,$0.00,R01,2024-02-06,$0.00,$0.00,2024-01-18,"$2,000.00","$2,160.00","$1,407.16"
+2023-10-31,"Early Payoff",6121761,"Apex Industrial Facility Services LLC",Daily,ACH,$0.00,,,$0.00,$0.00,2023-11-03,"$6,000.00","$6,600.00",$207.86
+2024-01-18,Settled,6007350,"M-Den, Inc.",Daily,ACH,$0.00,R29,2024-01-22,$0.00,$0.00,2024-01-24,"$7,000.00","$7,840.00","$1,709.79"
+,,,,,,"$37,400.27",,,$988.97,$959.31,,"$374,325.00","$409,521.06","$289,940.93"
