@@ -1,35 +1,42 @@
-from auth import initiate_device_flow, authenticate
+from ui.authenticate_ui import AuthenticateUI
+from ui.workbook_ui import WorkbookUI
 import tkinter as tk
 import customtkinter as ctk
-import threading
-
+from auth import global_access_token
+from api_calls import get_excel_files
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
 
         self.title("Excelerate")
-        self.geometry("400x200")
+        self.geometry("700x700")
 
-        self.label = ctk.CTkLabel(self, text="", font=("Arial", 14))
-        self.label.pack(pady=20)
+        self.authenticate_ui = AuthenticateUI(self, self.authentication_callback)
+        self.authenticate_ui.pack(pady=20)
 
-        self.authenticate_button = ctk.CTkButton(self, text="Authenticate", command=self.authenticate)
-        self.authenticate_button.pack(pady=10)
+        self.workbook_ui = None
 
-    def authenticate(self):
-        self.label.configure(text="Initiating device flow...")
-        flow = initiate_device_flow()
-        self.label.configure(text=f"User code: {flow['user_code']}")
-        # No need to start a separate thread here
-        authenticate(flow, self.authentication_callback)
-
-    def authentication_callback(self, success, response):
+    def authentication_callback(self, success, response, access_token):
         if success:
-            self.label.configure(text="Authentication successful!")
+            print("Authentication successful!")
             print("Response:", response)
+            name = response['displayName']
+
+            self.authenticate_ui.pack_forget()  # Remove the authenticate UI
+            self.show_workbook_ui(get_excel_files(access_token), name)  # Pass the access_token to get_excel_files
         else:
-            self.label.configure(text="Authentication failed.")
+            self.authenticate_ui.label.configure(text="Authentication failed.")
+
+    def workbook_callback(self, selected_workbook):
+        # Define what should happen when a workbook is selected
+        pass
+
+    def show_workbook_ui(self, excel_files, name):
+        # Assuming 'excel_files' contains a list of workbook paths
+        self.workbook_ui = WorkbookUI(self, excel_files, name, self.workbook_callback)
+        self.workbook_ui.pack(pady=20)
+
 
 if __name__ == "__main__":
     app = App()

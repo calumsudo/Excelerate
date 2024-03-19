@@ -9,6 +9,7 @@ APPLICATION_ID = 'c5b98c30-7848-4882-8e16-77cb80812d55'
 AUTHORITY_URL = 'https://login.microsoftonline.com/consumers/'
 SCOPES = ['User.Read', 'Files.ReadWrite.All']
 base_url = 'https://graph.microsoft.com/v1.0/'
+global_access_token = None
 
 def initiate_device_flow():
     app = msal.PublicClientApplication(APPLICATION_ID, authority=AUTHORITY_URL)
@@ -31,15 +32,15 @@ def authenticate(flow, callback):
         print("RESULT: ", result)
 
         if "access_token" in result:
-            access_token_id = result['access_token']
-            headers = {'Authorization': 'Bearer ' + access_token_id}
+            access_token = result['access_token']
+            headers = {'Authorization': 'Bearer ' + access_token}
             endpoint = base_url + 'me'
             response = requests.get(endpoint, headers=headers)
             print("RESPONSE: ", response)
             print("RESPONSE JSON: ", response.json())
-            callback(True, response.json())  # Indicate success and pass the response
+            callback(True, response.json(), access_token)  # Pass the access_token to the callback
         else:
-            callback(False, None)  # Indicate failure
+            callback(False, None, None)  # Indicate failure
 
-    # # Start the authentication process in a background thread
+    # Start the authentication process in a background thread
     threading.Thread(target=run_authentication).start()
