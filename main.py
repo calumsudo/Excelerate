@@ -1,27 +1,36 @@
+from auth import initiate_device_flow, authenticate
 import tkinter as tk
 import customtkinter as ctk
-from ui.login_ui import LoginApp
-from ui.dashboard_ui import DashboardApp
+import threading
 
-# System Settings
-ctk.set_appearance_mode("System")
-ctk.set_default_color_theme("blue")
 
-class MainAppController:
+class App(ctk.CTk):
     def __init__(self):
-        self.root = ctk.CTk()
-        self.start_login_ui()
+        super().__init__()
 
-    def start_login_ui(self):
-        # Just passing the callback function; no parent needed
-        self.login_app = LoginApp(on_success_callback=self.on_login_success)
+        self.title("Excelerate")
+        self.geometry("400x200")
 
-    def on_login_success(self):
-        self.login_app.pack_forget()  # Remove login UI
-        self.dashboard_app = DashboardApp(self.root)
-        self.dashboard_app.pack()  # Show dashboard UI
+        self.label = ctk.CTkLabel(self, text="", font=("Arial", 14))
+        self.label.pack(pady=20)
 
+        self.authenticate_button = ctk.CTkButton(self, text="Authenticate", command=self.authenticate)
+        self.authenticate_button.pack(pady=10)
+
+    def authenticate(self):
+        self.label.configure(text="Initiating device flow...")
+        flow = initiate_device_flow()
+        self.label.configure(text=f"User code: {flow['user_code']}")
+        # No need to start a separate thread here
+        authenticate(flow, self.authentication_callback)
+
+    def authentication_callback(self, success, response):
+        if success:
+            self.label.configure(text="Authentication successful!")
+            print("Response:", response)
+        else:
+            self.label.configure(text="Authentication failed.")
 
 if __name__ == "__main__":
-    app = MainAppController()
-    app.root.mainloop()
+    app = App()
+    app.mainloop()

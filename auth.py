@@ -1,6 +1,8 @@
 import msal
 import requests
+import webbrowser
 import threading
+import pyperclip
 
 # Define your constants
 APPLICATION_ID = 'c5b98c30-7848-4882-8e16-77cb80812d55'
@@ -13,6 +15,12 @@ def initiate_device_flow():
     flow = app.initiate_device_flow(scopes=SCOPES)
     if "user_code" not in flow:
         raise Exception("Failed to create device flow")
+    
+    # Open the verification URL in the user's web browser
+    webbrowser.open(flow['verification_uri'])
+    print("User code: ", flow['user_code'])
+    pyperclip.copy(flow['user_code'])
+    
     return flow
 
 def authenticate(flow, callback):
@@ -33,5 +41,5 @@ def authenticate(flow, callback):
         else:
             callback(False, None)  # Indicate failure
 
-    # Start the authentication process in a background thread
+    # # Start the authentication process in a background thread
     threading.Thread(target=run_authentication).start()
