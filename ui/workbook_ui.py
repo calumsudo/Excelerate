@@ -1,11 +1,13 @@
 import customtkinter as ctk
 from tkinter import filedialog
-from all_parsed import run_and_print
+from all_parsed import parse_csv_data
 
 class WorkbookUI(ctk.CTkFrame):
     def __init__(self, master, excel_files, name, workbook_callback):
         super().__init__(master)
         self.workbook_callback = workbook_callback
+        self.excel_files = excel_files
+
         excel_file_names = [name for name, _ in excel_files]
 
         self.workbook_path = None
@@ -22,9 +24,10 @@ class WorkbookUI(ctk.CTkFrame):
         workbook_label = ctk.CTkLabel(self, text=f"Welcome, {name}. Please select your workbook:")
         workbook_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        self.workbook_dropdown = ctk.CTkComboBox(self, values=excel_file_names, width=400)
+        self.workbook_dropdown = ctk.CTkComboBox(self, values=excel_file_names, width=400, command=self.on_select)
         self.workbook_dropdown.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
         self.workbook_dropdown.set("Select Workbook")
+        
 
         # CSV file input
         csv_label = ctk.CTkLabel(self, text="Add CSV files:")
@@ -81,6 +84,16 @@ class WorkbookUI(ctk.CTkFrame):
         process_button = ctk.CTkButton(self, text="Process CSV Files", command=self.process_csv_files, width=250)
         process_button.grid(row=14, column=0, columnspan=2, padx=10, pady=10)
 
+    def on_select(self, event):
+        # Get the name of the selected item
+        selected_name = self.workbook_dropdown.get()
+
+        # Find the index of this name in the excel_file_names list
+        index = next(i for i, (name, _) in enumerate(self.excel_files) if name == selected_name)
+
+        # Get the corresponding tuple from the excel_files list
+        self.selected_file = self.excel_files[index]
+
     def process_csv_files(self):
         # Retrieve paths from the entries
         kings_csv = self.csv_paths["Kings"]
@@ -97,7 +110,7 @@ class WorkbookUI(ctk.CTkFrame):
             return
 
         # Otherwise, call the processing function
-        run_and_print(kings_csv, boom_csv, bhb_csv, acs_csv, cv_csvs)
+        parse_csv_data(kings_csv, boom_csv, bhb_csv, acs_csv, cv_csvs, self.selected_file)
 
     def browse_csv(self, entity):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
