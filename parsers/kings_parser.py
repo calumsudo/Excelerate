@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime
+import os
 
 def parse_kings(csv_file):
     df = pd.read_csv(csv_file)
@@ -20,10 +21,24 @@ def parse_kings(csv_file):
     pivot_table = pivot_table.reset_index().rename(columns={'Business Name': 'Merchant Name'})
     pivot_table = pivot_table.reindex(columns=['Merchant Name', 'Sum of Syn Gross Amount', 'Sum of Syn Net Amount', 'Total Servicing Fee'])
 
-    # Format the filename with the current date
+
+    # Include the current date in the filename for saving the CSV
     today_date = datetime.now().strftime("%m_%d_%Y")
-    filename = f'Kings_PT_{today_date}.csv'
-    pivot_table.to_csv(filename, index=False)
+
+    # Specify the directory
+    directory = os.path.expanduser("~/Desktop/Excelerator")
+
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Create the output name
+    output_file = f'KINGS_{today_date}.csv'
+
+    # Construct the full path to the output file
+    output_path = os.path.join(directory, output_file)
+
+    # Save the DataFrame to the CSV file
+    pivot_table.to_csv(output_path, index=False)
 
     # Extract the totals
     totals_row = pivot_table[pivot_table['Merchant Name'] == 'All']

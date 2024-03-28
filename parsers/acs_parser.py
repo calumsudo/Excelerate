@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime
+import os
 
 def parse_acs(csv_file):
     # Read the CSV file, skipping the first three rows, and setting the third row as header
@@ -52,18 +53,21 @@ def parse_acs(csv_file):
     
     # Include the current date in the filename for saving the CSV
     today_date = datetime.now().strftime("%m_%d_%Y")
-    output_file = f'ACS_weekly_totals_report_{today_date}.csv'
-    latest_week_df.to_csv(output_file, index=False)
+
+    # Specify the directory
+    directory = os.path.expanduser("~/Desktop/Excelerator")
+
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Create the output name
+    output_file = f'ACS_{today_date}.csv'
+
+    # Construct the full path to the output file
+    output_path = os.path.join(directory, output_file)
+
+    # Save the DataFrame to the CSV file
+    latest_week_df.to_csv(output_path, index=False)
     
     # Return the DataFrame and totals
     return latest_week_df, total_gross_payment, total_net, total_fees
-
-# # Assuming 'ACS_Weekly.csv' is the path to your CSV file
-# latest_week_df, total_gross_payment, total_net, total_fees = parse_acs('ACS_Weekly.csv')
-
-# # If you want to see the dataframe or save it to a new CSV
-# if latest_week_df is not None:
-#     print(latest_week_df)
-#     print(f"Total Sum of Syn Gross Amount: {total_gross_payment}")
-#     print(f"Total Sum of Syn Net Amount: {total_net}")
-#     print(f"Total Servicing Fee: {total_fees}")

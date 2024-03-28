@@ -1,5 +1,6 @@
 import pandas as pd
 from datetime import datetime
+import os
 
 def parse_cv(file_paths):
     # Read and combine the CSV files
@@ -36,10 +37,25 @@ def parse_cv(file_paths):
     })
     aggregated_df = pd.concat([aggregated_df, totals_row], ignore_index=True)
     
-    # Include the current date in the output filename
+
+
+    # Include the current date in the filename for saving the CSV
     today_date = datetime.now().strftime("%m_%d_%Y")
-    output_file = f'CV_weekly_totals_report_{today_date}.csv'
-    aggregated_df.to_csv(output_file, index=False)
+
+    # Specify the directory
+    directory = os.path.expanduser("~/Desktop/Excelerator")
+
+    # Create the directory if it doesn't exist
+    os.makedirs(directory, exist_ok=True)
+
+    # Create the output name
+    output_file = f'ClearView_{today_date}.csv'
+
+    # Construct the full path to the output file
+    output_path = os.path.join(directory, output_file)
+
+    # Save the DataFrame to the CSV file
+    aggregated_df.to_csv(output_path, index=False)
     
     # Return the DataFrame and the totals
     return aggregated_df, sum_of_gross_amount, sum_of_net_amount, sum_of_servicing_fee

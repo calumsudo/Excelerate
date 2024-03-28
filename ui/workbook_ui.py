@@ -1,6 +1,12 @@
 import customtkinter as ctk
 from tkinter import filedialog
-from all_parsed import parse_csv_data
+from parsers.kings_parser import parse_kings
+from parsers.boom_parser import parse_boom
+from parsers.bhb_parser import parse_bhb
+from parsers.cv_parser import parse_cv
+from parsers.acs_parser import parse_acs
+from pdf_reporter import generate_report
+
 
 class WorkbookUI(ctk.CTkFrame):
     def __init__(self, master, excel_files, name, workbook_callback):
@@ -19,7 +25,6 @@ class WorkbookUI(ctk.CTkFrame):
             "ClearView": [None] * 5
         }
         
-
         # Workbook selection
         workbook_label = ctk.CTkLabel(self, text=f"Welcome, {name}. Please select your workbook:")
         workbook_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
@@ -81,6 +86,11 @@ class WorkbookUI(ctk.CTkFrame):
 
         self.grid_columnconfigure(1, weight=1)
 
+        # Add an error message label to your UI
+        self.error_message_label = ctk.CTkLabel(self, text="", font=("Arial", 10, "bold"), text_color="red")
+        self.error_message_label.grid(row=15, column=0, columnspan=2, sticky="ew")
+
+        # Process button
         process_button = ctk.CTkButton(self, text="Process CSV Files", command=self.process_csv_files, width=250)
         process_button.grid(row=14, column=0, columnspan=2, padx=10, pady=10)
 
@@ -96,21 +106,111 @@ class WorkbookUI(ctk.CTkFrame):
 
     def process_csv_files(self):
         # Retrieve paths from the entries
+        problem_files = []
         kings_csv = self.csv_paths["Kings"]
+        if kings_csv:
+            try:
+                kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee = parse_kings(kings_csv)
+            except Exception as e:
+                problem_files.append(f"Kings CSV: No Column named{e} in CSV")
+                print("Error in Kings CSV")
+                print(e)
+                print(problem_files)
+            
         boom_csv = self.csv_paths["Boom"]
+        if boom_csv:
+            try:
+                boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee = parse_boom(boom_csv)
+            except Exception as e:
+                problem_files.append(f"Boom CSV: No Column named {e} in CSV")
+                print("Error in Boom CSV")
+                print(e)
+                print(problem_files)
+            
         bhb_csv = self.csv_paths["BHB"]
+        if bhb_csv:
+            try:
+                bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee = parse_bhb(bhb_csv)
+            except Exception as e:
+                problem_files.append(f"BHB CSV: No Column named {e} in CSV")
+                print("Error in BHB CSV")
+                print(e)
+                print(problem_files)
+        
         acs_csv = self.csv_paths["ACS"]
+        if acs_csv:
+            try:
+                acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee = parse_acs(acs_csv)
+            except Exception as e:
+                problem_files.append(f"ACS CSV: No Column named {e} in CSV")
+                print("Error in ACS CSV")
+                print(e)
+                print(problem_files)
+            
         cv_csvs = self.csv_paths["ClearView"]
+        if cv_csvs:
+            try:
+                cv_pivot_table, cv_total_gross_amount, cv_total_net_amount, cv_total_fee = parse_cv(cv_csvs)
+            except Exception as e:
+                problem_files.append(f"ClearView CSV: No Column named {e} in CSV")
+                print("Error in ClearView CSV")
+                print(e)
+                print(problem_files)
+
+        if problem_files:
+            files_str = ", ".join(problem_files)
+            print(files_str)
+            self.display_error(f"Problem with {files_str}")
+        else:
+            self.display_error("")
+
 
         # Check if any of the required paths are missing
         missing_files = [key for key, value in self.csv_paths.items() if not value or any(v is None for v in value) if isinstance(value, list)]
         if missing_files:
-            print(f"Missing CSV files for: {', '.join(missing_files)}")
-            # You can also show an alert to the user here
+            self.display_error(f"Missing CSV files for: {', '.join(missing_files)}")
             return
 
         # Otherwise, call the processing function
-        parse_csv_data(kings_csv, boom_csv, bhb_csv, acs_csv, cv_csvs, self.selected_file)
+        self.display_error("")
+        generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee,
+                        boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee,
+                        bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee,
+                        cv_pivot_table, cv_total_gross_amount, cv_total_net_amount, cv_total_fee,
+                        acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee,
+                        self.selected_file, self.workbook_path, "Excelerator_Report")
+
+        # return {
+        #     "kings_pivot_table": kings_pivot_table,
+        #     "kings_total_gross_amount": kings_total_gross_amount,
+        #     "kings_total_net_amount": kings_total_net_amount,
+        #     "kings_total_fee": kings_total_fee,
+        #     "boom_pivot_table": boom_pivot_table,
+        #     "boom_total_gross_amount": boom_total_gross_amount,
+        #     "boom_total_net_amount": boom_total_net_amount,
+        #     "boom_total_fee": boom_total_fee,
+        #     "bhb_pivot_table": bhb_pivot_table,
+        #     "bhb_total_gross_amount": bhb_total_gross_amount,
+        #     "bhb_total_net_amount": bhb_total_net_amount,
+        #     "bhb_total_fee": bhb_total_fee,
+        #     "cv_pivot_table": cv_pivot_table,
+        #     "cv_total_gross_amount": cv_total_gross_amount,
+        #     "cv_total_net_amount": cv_total_net_amount,
+        #     "cv_total_fee": cv_total_fee,
+        #     "acs_pivot_table": acs_pivot_table,
+        #     "acs_total_gross_amount": acs_total_gross_amount,
+        #     "acs_total_net_amount": acs_total_net_amount,
+        #     "acs_total_fee": acs_total_fee        
+        # }
+
+
+    def display_error(self, message):
+        """Utility method to display error messages on the UI."""
+        if not hasattr(self, 'error_label'):
+            self.error_label = ctk.CTkLabel(self, text="", font=("Arial", 12, "bold"), text_color="red")
+            self.error_label.grid(row=15, column=0, columnspan=2, sticky="ew")
+        
+        self.error_label.configure(text=message)
 
     def browse_csv(self, entity):
         file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
