@@ -173,6 +173,7 @@ class WorkbookUI(ctk.CTkFrame):
 
         # Otherwise, call the processing function
         self.display_error("")
+        
         generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee,
                         boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee,
                         bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee,

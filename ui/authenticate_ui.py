@@ -1,7 +1,9 @@
 # authenticate_ui.py
 import customtkinter as ctk
 from auth import initiate_device_flow, authenticate
-from PIL import Image, ImageTk
+from PIL import Image
+import os
+
 
 class AuthenticateUI(ctk.CTkFrame):
     def __init__(self, master, authentication_callback):
@@ -18,10 +20,9 @@ class AuthenticateUI(ctk.CTkFrame):
         self.authenticate_button = ctk.CTkButton(self, text="Authenticate", command=self.authenticate)
         self.authenticate_button.pack(pady=10)
 
-        original_image = Image.open("ui/ExcelerateLogo.png")
-        resized_image = original_image.resize((400, 400), Image.Resampling.LANCZOS)  # Use LANCZOS for high-quality downsampling
-        self.tk_image = ImageTk.PhotoImage(resized_image)  # Create a PhotoImage object which is suitable for use in Tkinter
-        self.image_label = ctk.CTkLabel(self, image=self.tk_image, text="")
+        current_path = os.path.dirname(os.path.realpath(__file__))
+        self.logo_image = ctk.CTkImage(Image.open(current_path + "/ExcelerateLogo.png"), size=(400, 400))
+        self.image_label = ctk.CTkLabel(self, image=self.logo_image, text="")
         self.image_label.pack()        
 
     def authenticate(self):
