@@ -20,19 +20,23 @@ def get_excel_files(access_token):
         print(f"Error: {response.status_code} - {response.text}")
         return []
     
-def get_excel_workbook_sheets(access_token, workbook_name):
+def download_excel_workbook(access_token, file_id):
     if access_token is None:
         print("Authentication required.")
-        return []
+        return None
 
     headers = {'Authorization': 'Bearer ' + access_token}
-    endpoint = f'https://graph.microsoft.com/v1.0/me/drive/root:/{workbook_name}:/workbook/worksheets'
+    endpoint = f'https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content'
     response = requests.get(endpoint, headers=headers)
 
-    if response.status_code == 200:
-        data = response.json()
-        sheets = [item['name'] for item in data['value']]
-        return sheets
-    else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return []
+    response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
+    return response.content
+
+    # print("Response:", response)
+
+    # if response.status_code == 200:
+    #     data = response.json()
+    #     print("Workbook data:")
+    #     print(data)
+    #     return data
+    

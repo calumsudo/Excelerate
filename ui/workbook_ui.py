@@ -29,9 +29,9 @@ class WorkbookUI(ctk.CTkFrame):
         workbook_label = ctk.CTkLabel(self, text=f"Welcome, {name}. Please select your workbook:")
         workbook_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
 
-        self.workbook_dropdown = ctk.CTkComboBox(self, values=excel_file_names, width=400, command=self.on_select)
-        self.workbook_dropdown.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
-        self.workbook_dropdown.set("Select Workbook")
+        self.workbook_optionmenu = ctk.CTkComboBox(self, values=excel_file_names, width=400, command=self.on_select_workbook)
+        self.workbook_optionmenu.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        self.workbook_optionmenu.set("Select Workbook")
         
 
         # CSV file input
@@ -94,15 +94,34 @@ class WorkbookUI(ctk.CTkFrame):
         process_button = ctk.CTkButton(self, text="Process CSV Files", command=self.process_csv_files, width=250)
         process_button.grid(row=14, column=0, columnspan=2, padx=10, pady=10)
 
-    def on_select(self, event):
+    # def on_select_workbook(self, event=None):
+    #     # Get the name of the selected item
+    #     selected_name = self.workbook_optionmenu.get()
+
+    #     # Find the index of this name in the excel_file_names list
+    #     index = next(i for i, (name, _) in enumerate(self.excel_files) if name == selected_name)
+
+    #     # Get the corresponding tuple from the excel_files list
+    #     self.selected_file = self.excel_files[index]
+        
+    def on_select_workbook(self, event=None):
         # Get the name of the selected item
-        selected_name = self.workbook_dropdown.get()
+        selected_name = self.workbook_optionmenu.get()
+
+        if selected_name and selected_name != "Select Workbook":
+            self.fetch_workbook_button.configure(state="normal")  # Enable the button
+        else:
+            self.fetch_workbook_button.configure(state="disabled")  # Disable the button
 
         # Find the index of this name in the excel_file_names list
-        index = next(i for i, (name, _) in enumerate(self.excel_files) if name == selected_name)
+        index = next((i for i, (name, _) in enumerate(self.excel_files) if name == selected_name), None)
 
-        # Get the corresponding tuple from the excel_files list
-        self.selected_file = self.excel_files[index]
+        # If a valid workbook is selected, call the workbook callback function
+        if index is not None:
+            self.selected_file = self.excel_files[index]
+            self.workbook_callback(self.selected_file)
+        else:
+            self.selected_file = None
 
     def process_csv_files(self):
         # Retrieve paths from the entries
@@ -239,4 +258,4 @@ class WorkbookUI(ctk.CTkFrame):
                 self.clearview_entries[day].insert(0, file_path)
 
     def set_workbook_paths(self, workbook_paths):
-        self.workbook_dropdown.configure(values=workbook_paths)
+        self.workbook_optionmenu.configure(values=workbook_paths)

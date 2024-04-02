@@ -8,12 +8,13 @@ from parsers.acs_parser import parse_acs
 from parsers.cv_parser import parse_cv
 
 class DashboardUI(ctk.CTkFrame):
-    def __init__(self, master, excel_files, name, workbook_callback):
+    def __init__(self, master, excel_files, user_name, workbook_callback, data_processed_callback):
         super().__init__(master)
         self.workbook_callback = workbook_callback
         self.excel_files = excel_files
+        self.data_processed_callback = data_processed_callback
 
-        excel_file_names = [name for name, _ in excel_files]
+        excel_file_names = [user_name for user_name, _ in excel_files]
 
         self.workbook_path = None
         self.csv_paths = {
@@ -34,7 +35,7 @@ class DashboardUI(ctk.CTkFrame):
         self.logo_label.grid(row=0, column=0, padx=20, pady=(16, 10))
 
         # Sidebar Welcome User label
-        self.username_label = ctk.CTkLabel(self.sidebar_frame, text=f"Welcome, {name}")
+        self.username_label = ctk.CTkLabel(self.sidebar_frame, text=f"Welcome, {user_name}")
         self.username_label.grid(row=1, column=0, padx=20, pady=10)
 
         # Sidebar Appearance Mode
@@ -56,8 +57,9 @@ class DashboardUI(ctk.CTkFrame):
         self.workbook_optionmenu.grid(row=0, column=1, padx=10, pady=10, sticky="n")
         self.workbook_optionmenu.set("Select Workbook")
 
-        self.fetch_workbook_button = ctk.CTkButton(master=self, fg_color=("#129635"), hover_color="#22b348", text="Fetch Workbook")
+        self.fetch_workbook_button = ctk.CTkButton(master=self, fg_color=("#129635"), hover_color="#22b348", text="Fetch Workbook")  # Button starts as disabled
         self.fetch_workbook_button.grid(row=0, padx=10, pady=10, column=2, sticky="w") 
+        self.fetch_workbook_button.configure(state="disabled")  # Disable the button for initial state
 
 
         # Adjust the row weights according to how you want the rows to expand
@@ -129,15 +131,24 @@ class DashboardUI(ctk.CTkFrame):
         ctk.set_widget_scaling(new_scaling_float)     
 
 
-    def on_select_workbook(self, event):
+    def on_select_workbook(self, event=None):
         # Get the name of the selected item
         selected_name = self.workbook_optionmenu.get()
 
-        # Find the index of this name in the excel_file_names list
-        index = next(i for i, (name, _) in enumerate(self.excel_files) if name == selected_name)
+        if selected_name and selected_name != "Select Workbook":
+            self.fetch_workbook_button.configure(state="normal")  # Enable the button
+        else:
+            self.fetch_workbook_button.configure(state="disabled")  # Disable the button
 
-        # Get the corresponding tuple from the excel_files list
-        self.selected_file = self.excel_files[index]
+        # Find the index of this name in the excel_file_names list
+        index = next((i for i, (name, _) in enumerate(self.excel_files) if name == selected_name), None)
+
+        # If a valid workbook is selected, call the workbook callback function
+        if index is not None:
+            self.selected_file = self.excel_files[index]
+            self.workbook_callback(self.selected_file)
+        else:
+            self.selected_file = None
 
     def browse_csv(self, section):
         if section == "ClearView":
@@ -191,55 +202,65 @@ class DashboardUI(ctk.CTkFrame):
 
         # Process Kings CSV
         if self.csv_paths["Kings"]:
-            kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee, error = self.parse_and_handle_csv("Kings")
-            if error:
-                self.kings_error_label.configure(text=f"Error with {error} in Kings CSV File. Ensure proper CSV was uploaded.", text_color="red")
-                errors.append(error)
+            kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee, kings_error = self.parse_and_handle_csv("Kings")
+            if kings_error:
+                self.kings_error_label.configure(text=f"Error with {kings_error} in Kings CSV File. Ensure proper CSV was uploaded.", text_color="red")
+                errors.append(kings_error)
 
         # Process Boom CSV
         if self.csv_paths["Boom"]:
-            boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee, error = self.parse_and_handle_csv("Boom")
-            if error:
-                self.boom_error_label.configure(text=f"Error with {error} in Boom CSV File. Ensure proper CSV was uploaded.", text_color="red")
-                errors.append(error)
+            boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee, boom_error = self.parse_and_handle_csv("Boom")
+            if boom_error:
+                self.boom_error_label.configure(text=f"Error with {boom_error} in Boom CSV File. Ensure proper CSV was uploaded.", text_color="red")
+                errors.append(boom_error)
 
         # Process BHB CSV
         if self.csv_paths["BHB"]:
-            bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee, error = self.parse_and_handle_csv("BHB")
-            if error:
-                self.bhb_error_label.configure(text=f"Error with {error} in BHB CSV File. Ensure proper CSV was uploaded.", text_color="red")
-                errors.append(error)
+            bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee, bhb_error = self.parse_and_handle_csv("BHB")
+            if bhb_error:
+                self.bhb_error_label.configure(text=f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.", text_color="red")
+                errors.append(bhb_error)
 
         # Process ACS CSV
         if self.csv_paths["ACS"]:
-            acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee, error = self.parse_and_handle_csv("ACS")
-            if error:
-                self.acs_error_label.configure(text=f"Error with {error}. Ensure proper CSV was uploaded.", text_color="red")
-                errors.append(error)
+            acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee, acs_error = self.parse_and_handle_csv("ACS")
+            if acs_error:
+                self.acs_error_label.configure(text=f"Error with {acs_error}. Ensure proper CSV was uploaded.", text_color="red")
+                errors.append(acs_error)
 
         # Process ClearView CSV
         if self.csv_paths["ClearView"]:
             # Check if there are exactly 5 CSV files, raise the error if not
             if len(self.csv_paths["ClearView"]) != 5:
-                error = "There should be exactly 5 CSV files for ClearView."
-                self.clearview_error_label.configure(text=error, text_color="red")
-                errors.append(error)
+                clearview_length_error = "There should be exactly 5 CSV files for ClearView."
+                self.clearview_error_label.configure(text=clearview_length_error, text_color="red")
+                errors.append(clearview_length_error)
             if len(self.csv_paths["ClearView"]) != len(set(self.csv_paths["ClearView"])):
-                error = "Duplicate files detected for ClearView."
-                self.clearview_error_label.configure(text=error, text_color="red")
-                errors.append(error)
+                clearview_dup_error = "Duplicate files detected for ClearView."
+                self.clearview_error_label.configure(text=clearview_dup_error, text_color="red")
+                errors.append(clearview_dup_error)
             else:
                 # Process each ClearView CSV file
                 for csv_path in self.csv_paths["ClearView"]:
-                    clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, error = self.parse_and_handle_csv("ClearView", csv_path)
-                    if error:
-                        errors.append(error)
+                    clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, clearview_error = self.parse_and_handle_csv("ClearView", csv_path)
+                    if clearview_error:
+                        errors.append(clearview_error)
 
                 # If there are errors specific to ClearView, display them
                 if errors:
                     clearview_error_message = " | ".join(errors)
                     truncated_error_message = (clearview_error_message[:47] + '...') if len(clearview_error_message) > 50 else clearview_error_message
                     self.clearview_error_label.configure(text=f"Errors with ClearView files: {truncated_error_message}", text_color="red")
+        
+        if not errors:
+            self.data_processed_callback({
+                "Kings": (kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee, kings_error if kings_error else None),
+                "Boom": (boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee, kings_error if kings_error else None),
+                "BHB": (bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee, kings_error if kings_error else None),
+                "ACS": (acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee, kings_error if kings_error else None),
+                "ClearView": (clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, kings_error if kings_error else None)
+            }
+            )
 
     def parse_and_handle_csv(self, section, csv_path=None):
         csv_path = self.csv_paths[section]
