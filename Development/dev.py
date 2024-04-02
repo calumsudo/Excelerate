@@ -49,33 +49,25 @@ def add_net_rtr_column_if_needed(worksheet, header_row=2):
 
 # Function to map 'Sum of Syn Net Amount' from CSV to Excel
 def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
-    # Convert the worksheet to a DataFrame for easier searching
-    data = worksheet.values
-    columns = next(data)[1:]
-    df_excel = pd.DataFrame(data, columns=columns)
+    merchant_to_row = {}
+    # We need to iterate without 'values_only' to access the 'row' attribute of Cell objects.
+    for row in worksheet.iter_rows(min_row=header_row + 1, min_col=2, max_col=2):  # Adjust min_col and max_col to target Column B
+        cell = row[0]  # This is the first cell in the row, which corresponds to Column B
+        if cell.value:  # Make sure the cell has a value
+            merchant_to_row[cell.value.strip()] = cell.row  # Map the merchant name to its row number
 
-    # Find the index of the 'Merchant Name' column
-    merchant_col_index = df_excel.columns.get_loc("Merchant Name") + 1  # +1 for 1-indexed column numbers in Excel
-
-    # Iterate through the CSV DataFrame
+    # Now, let's loop through the DataFrame and assign values in Excel
     for index, row in df_csv.iterrows():
-        merchant_name = row['Merchant Name']
+        merchant_name = row['Merchant Name'].strip()  # Strip to ensure matching whitespace is not an issue
         net_amount = row['Sum of Syn Net Amount']
-
-        # Check if merchant exists in Excel
-        if merchant_name in df_excel['Merchant Name'].values:
-            # Get all row numbers for the merchant (in case there are duplicates)
-            row_numbers = df_excel.index[df_excel['Merchant Name'] == merchant_name].tolist()
-            
-            # Loop through each row number and set the 'Net RTR' value
-            for row_num in row_numbers:
-                # Offset the row number to match the Excel file structure
-                excel_row_num = row_num + header_row + 1
-                # Set the value in the corresponding 'Net RTR' cell
-                worksheet[f'{net_rtr_column}{excel_row_num}'].value = net_amount
+        # If the merchant is found in the dictionary, we write its net amount to Excel
+        if merchant_name in merchant_to_row:
+            excel_row_num = merchant_to_row[merchant_name]
+            cell_reference = f'{net_rtr_column}{excel_row_num}'
+            worksheet[cell_reference].value = net_amount
         else:
-            # Merchant not found, log or handle as needed
-            pass
+            print(f"Merchant '{merchant_name}' not found in Excel sheet.")
+
 
 
 # Function to process CSV and Excel data
@@ -87,34 +79,15 @@ def process_csv_and_excel(csv_file_path, excel_file_path):
     wb = openpyxl.load_workbook(excel_file_path)
     sheet = wb['Kings']
 
-    # Find duplicates in Excel sheet
-    duplicates = find_duplicates_in_column(sheet)
-
     # Add Net RTR column if needed and get the letter of the Net RTR column
     net_rtr_column = add_net_rtr_column_if_needed(sheet)
 
-    # Dictionary to hold unmatched merchant names
-    unmatched_merchants = {}
+    # Map 'Sum of Syn Net Amount' from CSV to Excel
+    map_net_amount_to_excel(sheet, df_csv, net_rtr_column)
 
-    # Map 'Sum of Syn Net Amount' from CSV to Excel, skip duplicates and log unmatched names
-    for index, row in df_csv.iterrows():
-        merchant_name = row['Merchant Name']
-        if merchant_name not in duplicates:
-            # Find the row in Excel to add the value
-            for row_excel in sheet.iter_rows(min_row=3, max_col=1, values_only=True):  # Assuming merchant names are in the first column
-                if row_excel[0] == merchant_name:  # Adjust the index 0 if merchant names are in a different column
-                    row_number = row_excel[0].row
-                    cell_reference = f'{net_rtr_column}{row_number}'  # Construct the cell reference
-                    sheet[cell_reference].value = row['Sum of Syn Net Amount']  # Set the value in the cell
-                    break
-            else:
-                unmatched_merchants[merchant_name] = row['Sum of Syn Net Amount']
-    
     # Save the Excel file
     wb.save(excel_file_path)
 
-    # Return unmatched merchants
-    return unmatched_merchants
 
 # Function to create log file for unmatched merchants
 def create_log_for_unmatched(unmatched_merchants, log_file_path):
