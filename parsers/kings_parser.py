@@ -13,7 +13,7 @@ def validate_csv_columns(df, required_columns):
             message += ", ..."
         raise ValueError(message)
 
-def parse_kings(csv_file):
+def parse_kings(csv_file, output_path):
     try:
         df = pd.read_csv(csv_file)
 
@@ -46,9 +46,9 @@ def parse_kings(csv_file):
         pivot_table = pivot_table.reindex(columns=['Merchant Name', 'Sum of Syn Gross Amount', 'Sum of Syn Net Amount', 'Total Servicing Fee'])
 
         today_date = datetime.now().strftime("%m_%d_%Y")
-        directory = os.path.expanduser("~/Desktop/Excelerator")
+        directory = os.path.expanduser(f"{output_path}")
         os.makedirs(directory, exist_ok=True)
-        output_file = f'KINGS_{today_date}.csv'
+        output_file = f'{today_date}/KINGS_{today_date}.csv'
         output_path = os.path.join(directory, output_file)
         pivot_table.to_csv(output_path, index=False)
 

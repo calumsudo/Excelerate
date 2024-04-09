@@ -46,6 +46,25 @@ def add_net_rtr_column_if_needed(worksheet, header_row=2):
         
     return get_column_letter(net_rtr_column_index)
 
+def update_total_net_rtr_formula(worksheet, net_rtr_column):
+    total_net_rtr_header = "Total Net RTR Payment Received"
+    header_row = 2  # Assuming headers are in the second row
+    
+    # Iterate through cells in the header row without using values_only=True
+    for cell in worksheet[header_row]:
+        # Now cell is a Cell object, and you can access cell.value
+        if cell.value == total_net_rtr_header:
+            # Now correctly access the cell's attributes
+            # Find the column letter for the cell
+            col_letter = openpyxl.utils.get_column_letter(cell.column)
+            # Update the formula for the entire column starting from the next row of the header
+            for row in range(header_row + 1, worksheet.max_row + 1):
+                formula_cell = f'{col_letter}{row}'
+                # Assuming you want to sum from AG (column 33) to the new Net RTR column for each row
+                start_column_letter = openpyxl.utils.get_column_letter(33)  # AG column
+                end_column_letter = net_rtr_column
+                worksheet[formula_cell].value = f'=SUM({start_column_letter}{row}:{end_column_letter}{row})'
+            break  # Exit loop after updating
 
 # Function to map 'Sum of Syn Net Amount' from CSV to Excel
 def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
@@ -67,9 +86,7 @@ def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
             worksheet[cell_reference].value = net_amount
         else:
             print(f"Merchant '{merchant_name}' not found in Excel sheet.")
-
-
-
+            
 # Function to process CSV and Excel data
 def process_csv_and_excel(csv_file_path, excel_file_path):
     # Load the CSV into a DataFrame
@@ -88,6 +105,8 @@ def process_csv_and_excel(csv_file_path, excel_file_path):
     # Save the Excel file
     wb.save(excel_file_path)
 
+    return df_csv
+
 
 # Function to create log file for unmatched merchants
 def create_log_for_unmatched(unmatched_merchants, log_file_path):
@@ -95,10 +114,32 @@ def create_log_for_unmatched(unmatched_merchants, log_file_path):
         for merchant, amount in unmatched_merchants.items():
             file.write(f'{merchant}: {amount}\n')
 
-# Main function call
+# Inside your main function call
 if __name__ == "__main__":
-    unmatched = process_csv_and_excel('kings.csv', 'Ass.xlsx')
-    if unmatched:
-        create_log_for_unmatched(unmatched, 'log.txt')
+    # Assuming 'Ass.xlsx' is the correct Excel file name and it's in the same directory as your script
+    excel_file_path = 'EX.xlsx'
+    csv_file_path = 'CV.csv'
+
+    unmatched = process_csv_and_excel(csv_file_path, excel_file_path)
+    
+    # Load the workbook and sheet again
+    wb = openpyxl.load_workbook(excel_file_path)
+    sheet = wb['CV']
+    
+    # Get the column letter for the new Net RTR column
+    net_rtr_column = add_net_rtr_column_if_needed(sheet)
+    df_csv = process_csv_and_excel(csv_file_path, excel_file_path)
+
+    # Map the amounts from the CSV to the Excel file
+    map_net_amount_to_excel(sheet, df_csv, net_rtr_column)
+
+    # Now call the function to update the formula
+    update_total_net_rtr_formula(sheet, net_rtr_column)
+
+    # Don't forget to save the workbook after making changes
+    wb.save(excel_file_path)
+
+    if not unmatched.empty:
+        create_log_for_unmatched(unmatched, 'loggy.txt')
 
 

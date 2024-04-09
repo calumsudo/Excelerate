@@ -13,6 +13,10 @@ class DashboardUI(ctk.CTkFrame):
         self.workbook_callback = workbook_callback
         self.excel_files = excel_files
         self.data_processed_callback = data_processed_callback
+        self.workbook_optionmenu_var = tk.StringVar(self)
+        self.output_dir_var = tk.StringVar(self)
+        
+
 
         excel_file_names = [user_name for user_name, _ in excel_files]
 
@@ -22,13 +26,13 @@ class DashboardUI(ctk.CTkFrame):
             "Boom": None,
             "BHB": None,
             "ACS": None,
-            "ClearView": [None] * 5
+            "CV": [None] * 5
         }     
 
         # create sidebar frame with widgets
         self.sidebar_frame = ctk.CTkFrame(self, width=140)
         self.sidebar_frame.grid(row=0, column=0, rowspan=20, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(4, weight=1)
+        self.sidebar_frame.grid_rowconfigure(1, weight=1)
 
         # Sidebar label
         self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="Excelerate", font=ctk.CTkFont(size=20, weight="bold"))
@@ -38,29 +42,55 @@ class DashboardUI(ctk.CTkFrame):
         self.username_label = ctk.CTkLabel(self.sidebar_frame, text=f"Welcome, {user_name}")
         self.username_label.grid(row=1, column=0, padx=20, pady=10)
 
+        # Add an output directory label
+        self.output_dir_label = ctk.CTkLabel(self.sidebar_frame, text="Output Directory:", anchor="w")
+        self.output_dir_label.grid(row=4, column=0, padx=20, pady=(10, 0))
+
+        # Add a StringVar to hold the directory path
+        self.output_dir_var = tk.StringVar(self)
+
+        # Add an entry widget linked to the StringVar
+        self.output_dir_entry = ctk.CTkEntry(self.sidebar_frame, textvariable=self.output_dir_var, width=120, placeholder_text="Select Folder")
+        self.output_dir_entry.grid(row=5, column=0, padx=20, pady=(10, 0))
+
+        # Add a button to browse for a directory
+        self.output_dir_button = ctk.CTkButton(self.sidebar_frame, text="Browse", command=self.select_output_directory, width=120)
+        self.output_dir_button.grid(row=6, column=0, padx=20, pady=(10, 120))
+
+        # Add an empty label to act as a spacer
+        self.spacer_label = ctk.CTkLabel(self.sidebar_frame, text="")
+        self.spacer_label.grid(row=11, column=0, sticky="nsew")
+
+
         # Sidebar Appearance Mode
         self.appearance_mode_label = ctk.CTkLabel(self.sidebar_frame, text="Appearance Mode:", anchor="w")
-        self.appearance_mode_label.grid(row=5, column=0, padx=20, pady=(10, 0))
+        self.appearance_mode_label.grid(row=16, column=0, padx=20, pady=(10, 0))
         self.appearance_mode_optionmenu = ctk.CTkOptionMenu(self.sidebar_frame, values=["Light", "Dark", "System"],
-                                                                       command=self.change_appearance_mode_event)
-        self.appearance_mode_optionmenu.grid(row=6, column=0, padx=20, pady=(10, 10))
+                                                                            command=self.change_appearance_mode_event)
+        self.appearance_mode_optionmenu.grid(row=17, column=0, padx=20, pady=(10, 10))
 
         # Sidebar UI Scaling
         self.scaling_label = ctk.CTkLabel(self.sidebar_frame, text="UI Scaling:", anchor="w")
-        self.scaling_label.grid(row=15, column=0, padx=20, pady=(10, 0))
+        self.scaling_label.grid(row=18, column=0, padx=20, pady=(10, 0))
         self.scaling_optionmenu = ctk.CTkOptionMenu(self.sidebar_frame, values=["80%", "90%", "100%", "110%", "120%"],
-                                                               command=self.change_scaling_event)
-        self.scaling_optionmenu.grid(row=16, column=0, padx=20, pady=(10, 20))
+                                                                    command=self.change_scaling_event)
+        self.scaling_optionmenu.grid(row=19, column=0, padx=20, pady=(10, 20))
+
+        # Now, set the rowconfigure to the last row to push everything up
+        self.sidebar_frame.grid_rowconfigure(20, weight=1)
 
         # create main entry and button
-        self.workbook_optionmenu = ctk.CTkComboBox(self, values=excel_file_names, width=600, command=self.on_select_workbook)
+        self.workbook_optionmenu = ctk.CTkComboBox(self, values=excel_file_names, width=600, variable=self.workbook_optionmenu_var)
         self.workbook_optionmenu.grid(row=0, column=1, padx=10, pady=10, sticky="n")
-        self.workbook_optionmenu.set("Select Workbook")
+        self.workbook_optionmenu.set("Select Workbook - (Choose an Output Directory First)")
+        self.workbook_optionmenu.configure(state="disabled")
+        self.output_dir_var.trace_add('write', self.check_output_directory)
 
-        self.fetch_workbook_button = ctk.CTkButton(master=self, fg_color=("#129635"), hover_color="#22b348", text="Fetch Workbook")  # Button starts as disabled
-        self.fetch_workbook_button.grid(row=0, padx=10, pady=10, column=2, sticky="w") 
-        self.fetch_workbook_button.configure(state="disabled")  # Disable the button for initial state
-
+        # Initialize fetch_workbook_button (Initially disabled)
+        self.fetch_workbook_button = ctk.CTkButton(master=self, fg_color=("#129635"), hover_color="#22b348", text="Fetch Workbook", command=self.on_select_workbook)
+        self.fetch_workbook_button.grid(row=0, padx=10, pady=10, column=2, sticky="w")
+        self.fetch_workbook_button.configure(state="disabled")
+        self.workbook_optionmenu_var.trace_add("write", self.enable_fetch_workbook_button)
 
         # Adjust the row weights according to how you want the rows to expand
         self.grid_rowconfigure(0, weight=0)  # Header row, might not need to expand
@@ -68,7 +98,7 @@ class DashboardUI(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=0)  # Boom row, doesn't need to expand
         self.grid_rowconfigure(3, weight=0)  # BHB row, doesn't need to expand
         self.grid_rowconfigure(4, weight=0)  # ACS row, doesn't need to expand
-        self.grid_rowconfigure(5, weight=0)  # ClearView row, should expand
+        self.grid_rowconfigure(5, weight=0)  # CV row, should expand
 
         # create kings file upload frame, entry, button, and error message
         self.kings_upload_frame = ctk.CTkFrame(self)
@@ -94,12 +124,12 @@ class DashboardUI(ctk.CTkFrame):
         self.acs_button = ctk.CTkButton(self.acs_upload_frame, text="Browse for ACS CSV", command=lambda: self.browse_csv("ACS"), width=250)
         self.acs_error_label = ctk.CTkLabel(self.acs_upload_frame, text="")
 
-        # create clearview file upload frame, entry and button
+        # create CV file upload frame, entry and button
         self.clearview_upload_frame = ctk.CTkFrame(self)
-        self.clearview_button = ctk.CTkButton(self.clearview_upload_frame, text="Browse for ClearView CSV", command=lambda: self.browse_csv("ClearView"), width=250)
+        self.clearview_button = ctk.CTkButton(self.clearview_upload_frame, text="Browse for CV CSV", command=lambda: self.browse_csv("CV"), width=250)
         self.clearview_listbox = tk.Listbox(self.clearview_upload_frame, width=50, height=5)  # Adjust the height as needed
-        self.clearview_button = ctk.CTkButton(self.clearview_upload_frame, text="Browse for ClearView CSVs",
-                                      command=lambda: self.browse_csv("ClearView"), width=250)
+        self.clearview_button = ctk.CTkButton(self.clearview_upload_frame, text="Browse for CV CSVs",
+                                      command=lambda: self.browse_csv("CV"), width=250)
         self.clearview_error_label = ctk.CTkLabel(self.clearview_upload_frame, text="")
 
         # Call this method for each file upload section
@@ -107,10 +137,30 @@ class DashboardUI(ctk.CTkFrame):
         self.setup_file_upload_frame(self.boom_upload_frame, self.boom_entry, self.boom_button, self.boom_error_label, "Boom CSV File Path", 2)
         self.setup_file_upload_frame(self.bhb_upload_frame, self.bhb_entry, self.bhb_button, self.bhb_error_label, "BHB CSV File Path", 3)
         self.setup_file_upload_frame(self.acs_upload_frame, self.acs_entry, self.acs_button, self.acs_error_label, "ACS CSV File Path", 4)
-        self.setup_file_upload_frame(self.clearview_upload_frame, self.clearview_listbox, self.clearview_button, self.clearview_error_label, "ClearView CSV File Path", 5)
+        self.setup_file_upload_frame(self.clearview_upload_frame, self.clearview_listbox, self.clearview_button, self.clearview_error_label, "CV CSV File Path", 5)
 
         self.process_button = ctk.CTkButton(self, text="Process CSV files and Generate Excel Workbook", command=self.process_all_csv_files)
         self.process_button.grid(row=6, column=1, columnspan=2, padx=10, pady=10, sticky="ew")
+    # Inside the DashboardUI class
+
+
+    def check_output_directory(self, *args):
+        directory = self.output_dir_var.get()
+        if directory:
+            self.workbook_optionmenu.configure(state="normal")
+        else:
+            self.workbook_optionmenu.configure(state="disabled")
+            self.fetch_workbook_button.configure(state="disabled")
+
+    def select_output_directory(self):
+        directory = filedialog.askdirectory()
+        if directory:  # If a directory is selected, set it and enable the workbook dropdown
+            self.output_dir_var.set(directory)
+        else:  # No directory selected, ensure the workbook dropdown is disabled
+            self.output_dir_var.set('')
+            self.workbook_optionmenu.configure(state="disabled")
+            self.fetch_workbook_button.configure(state="disabled")
+
 
 
     def setup_file_upload_frame(self, frame, widget, button, error, text, row):
@@ -130,12 +180,20 @@ class DashboardUI(ctk.CTkFrame):
         new_scaling_float = int(new_scaling.replace("%", "")) / 100
         ctk.set_widget_scaling(new_scaling_float)     
 
+    def enable_fetch_workbook_button(self, *args):
+        """Enable the fetch_workbook_button when a workbook is selected."""
+        selected_value = self.workbook_optionmenu_var.get()
+        if selected_value and selected_value != "Select Workbook - (Choose an Output Directory First)":
+            self.fetch_workbook_button.configure(state="normal")
+        else:
+            self.fetch_workbook_button.configure(state="disabled")
 
-    def on_select_workbook(self, event=None):
+
+    def on_select_workbook(self):
         # Get the name of the selected item
         selected_name = self.workbook_optionmenu.get()
 
-        if selected_name and selected_name != "Select Workbook":
+        if selected_name and selected_name != "Select Workbook - (Choose an Output Directory First)":
             self.fetch_workbook_button.configure(state="normal")  # Enable the button
         else:
             self.fetch_workbook_button.configure(state="disabled")  # Disable the button
@@ -146,12 +204,12 @@ class DashboardUI(ctk.CTkFrame):
         # If a valid workbook is selected, call the workbook callback function
         if index is not None:
             self.selected_file = self.excel_files[index]
-            self.workbook_callback(self.selected_file)
+            self.workbook_callback(self.selected_file, self.output_dir_var.get())
         else:
             self.selected_file = None
 
     def browse_csv(self, section):
-        if section == "ClearView":
+        if section == "CV":
             # Use filedialog.askopenfilenames to allow selecting multiple files
             file_paths = filedialog.askopenfilenames(title=f"Select files for {section}")
             if file_paths:
@@ -181,8 +239,8 @@ class DashboardUI(ctk.CTkFrame):
                     self.csv_paths["ACS"] = file_path
                     self.acs_entry.delete(0, "end")
                     self.acs_entry.insert(0, file_path)
-                elif section == "ClearView":
-                    self.csv_paths["ClearView"] = file_path
+                elif section == "CV":
+                    self.csv_paths["CV"] = file_path
                     self.clearview_entry.delete(0, "end")
                     self.clearview_entry.insert(0, file_path)
                 else:
@@ -228,29 +286,29 @@ class DashboardUI(ctk.CTkFrame):
                 self.acs_error_label.configure(text=f"Error with {acs_error}. Ensure proper CSV was uploaded.", text_color="red")
                 errors.append(acs_error)
 
-        # Process ClearView CSV
-        if self.csv_paths["ClearView"]:
+        # Process CV CSV
+        if self.csv_paths["CV"]:
             # Check if there are exactly 5 CSV files, raise the error if not
-            if len(self.csv_paths["ClearView"]) != 5:
-                clearview_length_error = "There should be exactly 5 CSV files for ClearView."
+            if len(self.csv_paths["CV"]) != 5:
+                clearview_length_error = "There should be exactly 5 CSV files for CV."
                 self.clearview_error_label.configure(text=clearview_length_error, text_color="red")
                 errors.append(clearview_length_error)
-            if len(self.csv_paths["ClearView"]) != len(set(self.csv_paths["ClearView"])):
-                clearview_dup_error = "Duplicate files detected for ClearView."
+            if len(self.csv_paths["CV"]) != len(set(self.csv_paths["CV"])):
+                clearview_dup_error = "Duplicate files detected for CV."
                 self.clearview_error_label.configure(text=clearview_dup_error, text_color="red")
                 errors.append(clearview_dup_error)
             else:
-                # Process each ClearView CSV file
-                for csv_path in self.csv_paths["ClearView"]:
-                    clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, clearview_error = self.parse_and_handle_csv("ClearView", csv_path)
+                # Process each CV CSV file
+                for csv_path in self.csv_paths["CV"]:
+                    clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, clearview_error = self.parse_and_handle_csv("CV", csv_path)
                     if clearview_error:
                         errors.append(clearview_error)
 
-                # If there are errors specific to ClearView, display them
+                # If there are errors specific to CV, display them
                 if errors:
                     clearview_error_message = " | ".join(errors)
                     truncated_error_message = (clearview_error_message[:47] + '...') if len(clearview_error_message) > 50 else clearview_error_message
-                    self.clearview_error_label.configure(text=f"Errors with ClearView files: {truncated_error_message}", text_color="red")
+                    self.clearview_error_label.configure(text=f"Errors with CV files: {truncated_error_message}", text_color="red")
         
         if not errors:
             self.data_processed_callback({
@@ -258,22 +316,22 @@ class DashboardUI(ctk.CTkFrame):
                 "Boom": (boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee, kings_error if kings_error else None),
                 "BHB": (bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee, kings_error if kings_error else None),
                 "ACS": (acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee, kings_error if kings_error else None),
-                "ClearView": (clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, kings_error if kings_error else None)
+                "CV": (clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, kings_error if kings_error else None)
             }
             )
 
     def parse_and_handle_csv(self, section, csv_path=None):
         csv_path = self.csv_paths[section]
         if section == "Kings":
-            return parse_kings(csv_path)
+            return parse_kings(csv_path, self.output_dir_var.get())
         elif section == "Boom":
-            return parse_boom(csv_path)
+            return parse_boom(csv_path, self.output_dir_var.get())
         elif section == "BHB":
-            return parse_bhb(csv_path)
+            return parse_bhb(csv_path, self.output_dir_var.get())
         elif section == "ACS":
-            return parse_acs(csv_path)
-        elif section == "ClearView":
-            return parse_cv(csv_path)
+            return parse_acs(csv_path, self.output_dir_var.get())
+        elif section == "CV":
+            return parse_cv(csv_path, self.output_dir_var.get())
         else:
             # It might be useful to return an error if the section isn't recognized
             return (None, None, None, None, f"Unrecognized section: {section}")
