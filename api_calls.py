@@ -39,4 +39,16 @@ def download_excel_workbook(access_token, file_id):
     #     print("Workbook data:")
     #     print(data)
     #     return data
+
+def update_workbook(access_token, file_id, workbook_bytes):
+    if access_token is None:
+        print("Authentication required.")
+        return None
+
+    headers = {'Authorization': 'Bearer ' + access_token}
+    endpoint = f'https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/content'
+    response = requests.put(endpoint, headers=headers, data=workbook_bytes)
+
+    response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
+    return response.content
     

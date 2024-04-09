@@ -5,6 +5,8 @@ import os
 from openpyxl.utils import get_column_letter
 from datetime import datetime, timedelta
 import pandas as pd
+from io import BytesIO
+
 
 def get_workbook_data(workbook_bytes, selected_file, output_path):
 
@@ -136,38 +138,6 @@ def create_log_for_unmatched(unmatched_merchants, log_file_path):
         for merchant, amount in unmatched_merchants.items():
             file.write(f'{merchant}: {amount}\n')
 
-# def add_data_to_sheet(workbook, df, sheet_name):
-#     sheet = workbook[sheet_name]
-#     print(f"Adding data to sheet '{sheet_name}'...")
-    
-#     # Find duplicates in Excel sheet
-#     duplicates = find_duplicates_in_column(sheet)
-#     print("Duplicates:", duplicates)
-    
-#     # Extract merchant names from DataFrame
-#     df_merchants = set(df['Merchant Name'].dropna().unique())
-    
-#     # Compare DataFrame merchants with worksheet merchants
-#     unmatched_merchants = df_merchants - set(sheet.iter_rows(min_col=2, max_col=2, values_only=True))
-#     print("Merchants not found in Excel sheet:", unmatched_merchants)
-
-#     # Optionally, log skipped entries
-#     skipped_entries = {"duplicates": duplicates, "unmatched": unmatched_merchants}
-#     log_skipped_entries(skipped_entries, sheet_name)
-
-#     # Insert data into the worksheet (implement your data insertion logic here)
-#     # ...
-#     net_rtr_column = add_net_rtr_column_if_needed(sheet)
-
-#     df_csv = process_csv_and_excel(df, workbook, sheet_name)
-
-#     map_net_amount_to_excel(sheet, df, net_rtr_column)
-#     update_total_net_rtr_formula(sheet, net_rtr_column)
-
-#     workbook.save("~/Desktop/OUT.xlsx")
-
-#     return workbook
-
 
 def add_data_to_sheet(workbook, df, sheet_name):
     sheet = workbook[sheet_name]
@@ -202,7 +172,12 @@ def add_data_to_sheet(workbook, df, sheet_name):
     # Save changes to the workbook directly if needed
     workbook.save("Backup.xlsx")
 
-    return workbook
+
+    output_bytes = BytesIO()
+    workbook.save(output_bytes)
+    output_bytes.seek(0)
+
+    return output_bytes.getvalue()
 
 
 def log_skipped_entries(skipped_entries, sheet_name):

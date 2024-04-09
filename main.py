@@ -1,11 +1,8 @@
 from ui.authenticate_ui import AuthenticateUI
 from ui.dashboard_ui import DashboardUI
 from workbook import get_workbook_data, add_data_to_sheet
-import tkinter as tk
 import customtkinter as ctk
-from auth import global_access_token
-from api_calls import get_excel_files, download_excel_workbook
-from tkinterdnd2 import TkinterDnD, DND_FILES
+from api_calls import get_excel_files, download_excel_workbook, update_workbook
 
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
@@ -52,6 +49,7 @@ class App(ctk.CTk):
             print("Downloading workbook...")
             # Use the stored access_token
             workbook_bytes = download_excel_workbook(self.access_token, selected_workbook[1])
+            self.selected_workbook = selected_workbook
 
             # workbook = load_workbook(filename=io.BytesIO(workbook_bytes))
             workbook = get_workbook_data(workbook_bytes, selected_workbook[0], output_path)
@@ -88,7 +86,12 @@ class App(ctk.CTk):
                 if not error:
                     # Assuming you have a function `add_data_to_sheet` that accepts these parameters
                     # You might need to modify it to handle each sheet's specific data structure
-                    add_data_to_sheet(self.workbook, pivot_table, sheet_name)
+                    updated_bytes = add_data_to_sheet(self.workbook, pivot_table, sheet_name)
+                    print(f"Data added to sheet '{sheet_name}'.")
+                    print(f"HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH {self.selected_workbook[1]}")
+                    # Update the workbook with the new data
+                    update_workbook(self.access_token, self.selected_workbook[1], updated_bytes)
+
                 else:
                     # Handle the error, maybe log it or show a message to the user
                     print(f"Error processing {sheet_name} data:", error)
