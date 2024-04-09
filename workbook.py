@@ -14,13 +14,13 @@ def get_workbook_data(workbook_bytes, selected_file, output_path):
     current_date = datetime.now()
     date_string = current_date.strftime("%m_%d_%Y")
     os.makedirs(os.path.expanduser(f"{output_path}/{date_string}"), exist_ok=True)
-    file_path_backup = os.path.expanduser(f"{output_path}/{date_string}/{selected_file}_BACKUP{date_string}.xlsx")
+    file_name = selected_file.removesuffix(".xlsx")
+    file_path_backup = os.path.expanduser(f"{output_path}/{date_string}/{file_name}_BACKUP_{date_string}.xlsx")
 
     with open(file_path_backup, "wb") as file:
         file.write(workbook_bytes)
 
     return workbook
-
 
 
 def find_duplicates_in_column(worksheet, column='B'):

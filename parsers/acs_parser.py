@@ -55,13 +55,13 @@ def parse_acs(csv_file, output_path):
         today_date = datetime.now().strftime("%m_%d_%Y")
 
         # Specify the directory
-        directory = os.path.expanduser(f"{output_path}")
+        directory = os.path.expanduser(f"{output_path}/{today_date}/Weekly_Pivot_Tables")
 
         # Create the directory if it doesn't exist
         os.makedirs(directory, exist_ok=True)
 
         # Create the output name
-        output_file = f'{today_date}/ACS_{today_date}.csv'
+        output_file = f'ACS_{today_date}.csv'
 
         # Construct the full path to the output file
         output_path = os.path.join(directory, output_file)

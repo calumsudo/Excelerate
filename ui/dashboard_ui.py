@@ -141,6 +141,15 @@ class DashboardUI(ctk.CTkFrame):
 
         self.process_button = ctk.CTkButton(self, text="Process CSV files and Generate Excel Workbook", command=self.process_all_csv_files)
         self.process_button.grid(row=6, column=1, columnspan=2, padx=10, pady=10, sticky="ew")
+
+        #disable all buttons until workbook is selected
+        self.kings_button.configure(state="disabled")
+        self.boom_button.configure(state="disabled")
+        self.bhb_button.configure(state="disabled")
+        self.acs_button.configure(state="disabled")
+        self.clearview_button.configure(state="disabled")
+        self.process_button.configure(state="disabled")
+
     # Inside the DashboardUI class
 
 
@@ -160,8 +169,6 @@ class DashboardUI(ctk.CTkFrame):
             self.output_dir_var.set('')
             self.workbook_optionmenu.configure(state="disabled")
             self.fetch_workbook_button.configure(state="disabled")
-
-
 
     def setup_file_upload_frame(self, frame, widget, button, error, text, row):
         frame.grid(row=row, column=1, padx=10, pady=10, columnspan=2, sticky="nswe")
@@ -188,10 +195,10 @@ class DashboardUI(ctk.CTkFrame):
         else:
             self.fetch_workbook_button.configure(state="disabled")
 
-
     def on_select_workbook(self):
         # Get the name of the selected item
         selected_name = self.workbook_optionmenu.get()
+        self.enable_csv_buttons()
 
         if selected_name and selected_name != "Select Workbook - (Choose an Output Directory First)":
             self.fetch_workbook_button.configure(state="normal")  # Enable the button
@@ -207,6 +214,15 @@ class DashboardUI(ctk.CTkFrame):
             self.workbook_callback(self.selected_file, self.output_dir_var.get())
         else:
             self.selected_file = None
+
+    def enable_csv_buttons(self):
+        self.kings_button.configure(state="normal")
+        self.boom_button.configure(state="normal")
+        self.bhb_button.configure(state="normal")
+        self.acs_button.configure(state="normal")
+        self.clearview_button.configure(state="normal")
+        self.process_button.configure(state="normal")
+
 
     def browse_csv(self, section):
         if section == "CV":

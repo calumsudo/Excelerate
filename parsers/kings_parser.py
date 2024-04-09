@@ -46,9 +46,9 @@ def parse_kings(csv_file, output_path):
         pivot_table = pivot_table.reindex(columns=['Merchant Name', 'Sum of Syn Gross Amount', 'Sum of Syn Net Amount', 'Total Servicing Fee'])
 
         today_date = datetime.now().strftime("%m_%d_%Y")
-        directory = os.path.expanduser(f"{output_path}")
+        directory = os.path.expanduser(f"{output_path}/{today_date}/Weekly_Pivot_Tables")
         os.makedirs(directory, exist_ok=True)
-        output_file = f'{today_date}/KINGS_{today_date}.csv'
+        output_file = f'KINGS_{today_date}.csv'
         output_path = os.path.join(directory, output_file)
         pivot_table.to_csv(output_path, index=False)
 
