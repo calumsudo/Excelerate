@@ -1,6 +1,6 @@
 from ui.authenticate_ui import AuthenticateUI
 from ui.dashboard_ui import DashboardUI
-from workbook import get_workbook_data, add_data_to_kings_sheet
+from workbook import get_workbook_data, add_data_to_sheet
 import tkinter as tk
 import customtkinter as ctk
 from auth import global_access_token
@@ -21,8 +21,6 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=0)
         self.grid_columnconfigure((2, 3), weight=0)
         self.grid_rowconfigure((0, 1, 2), weight=1)
-
-
 
         self.authenticate_ui = AuthenticateUI(self, self.authentication_callback)
         self.authenticate_ui.pack(pady=20)
@@ -47,7 +45,7 @@ class App(ctk.CTk):
         else:
             self.authenticate_ui.label.configure(text="Authentication failed.")
 
-    def workbook_callback(self, selected_workbook):
+    def workbook_callback(self, selected_workbook, output_path):
         # Define what should happen when a workbook is selected
         print("Selected workbook:", selected_workbook)
         if self.access_token:  # Check if the access token is available
@@ -56,7 +54,7 @@ class App(ctk.CTk):
             workbook_bytes = download_excel_workbook(self.access_token, selected_workbook[1])
 
             # workbook = load_workbook(filename=io.BytesIO(workbook_bytes))
-            workbook = get_workbook_data(workbook_bytes, selected_workbook[0])
+            workbook = get_workbook_data(workbook_bytes, selected_workbook[0], output_path)
             self.workbook = workbook
 
             # The rest of your code to handle the workbook...
@@ -71,19 +69,31 @@ class App(ctk.CTk):
         # self.workbook_ui = WorkbookUI(self, excel_files, name, self.workbook_callback)
         # self.workbook_ui.pack(pady=20)
 
+
     def handle_data_processed(self, data):
-        if "Kings" in data:
-            kings_data = data["Kings"]
-            # Unpack the values from kings_data
-            kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee, kings_error = kings_data
-            
-            # If there is no error, proceed with adding data to the Kings sheet
-            if not kings_error:
-                # Assuming you have a function `add_data_to_kings_sheet` that accepts these parameters
-                add_data_to_kings_sheet(self.workbook, kings_pivot_table)
-            else:
-                # Handle the error, maybe log it or show a message to the user
-                print("Error processing Kings data:", kings_error)
+        # List of sheets to try
+        sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
+
+        print("Data processed:", data)
+
+        for sheet_name in sheet_names:
+            if sheet_name in data:
+                sheet_data = data[sheet_name]
+
+                # Unpack the values from sheet_data
+                # Note: Ensure that the structure of sheet_data is consistent across different sheets
+                pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
+                
+                # If there is no error, proceed with adding data to the sheet
+                if not error:
+                    # Assuming you have a function `add_data_to_sheet` that accepts these parameters
+                    # You might need to modify it to handle each sheet's specific data structure
+                    add_data_to_sheet(self.workbook, pivot_table, sheet_name)
+                else:
+                    # Handle the error, maybe log it or show a message to the user
+                    print(f"Error processing {sheet_name} data:", error)
+
+        
 
 
 

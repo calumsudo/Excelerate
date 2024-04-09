@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-def parse_acs(csv_file):
+def parse_acs(csv_file, output_path):
     try:
         # Read the CSV file, skipping the first three rows, and setting the third row as header
         df = pd.read_csv(csv_file, header=2, skiprows=[3])
@@ -55,13 +55,13 @@ def parse_acs(csv_file):
         today_date = datetime.now().strftime("%m_%d_%Y")
 
         # Specify the directory
-        directory = os.path.expanduser("~/Desktop/Excelerator")
+        directory = os.path.expanduser(f"{output_path}")
 
         # Create the directory if it doesn't exist
         os.makedirs(directory, exist_ok=True)
 
         # Create the output name
-        output_file = f'ACS_{today_date}.csv'
+        output_file = f'{today_date}/ACS_{today_date}.csv'
 
         # Construct the full path to the output file
         output_path = os.path.join(directory, output_file)

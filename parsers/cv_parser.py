@@ -19,7 +19,7 @@ def validate_csv_files(file_paths, required_columns):
             raise ValueError(f"Incorrect file format(s) for the following{file}")
 
 
-def parse_cv(file_paths):
+def parse_cv(file_paths, output_path):
     try:
         # Expected columns
         required_columns = [
@@ -71,13 +71,13 @@ def parse_cv(file_paths):
         today_date = datetime.now().strftime("%m_%d_%Y")
 
         # Specify the directory
-        directory = os.path.expanduser("~/Desktop/Excelerator")
+        directory = os.path.expanduser(f"{output_path}")
 
         # Create the directory if it doesn't exist
         os.makedirs(directory, exist_ok=True)
 
         # Create the output name
-        output_file = f'ClearView_{today_date}.csv'
+        output_file = f'{today_date}/ClearView_{today_date}.csv'
 
         # Construct the full path to the output file
         output_path = os.path.join(directory, output_file)

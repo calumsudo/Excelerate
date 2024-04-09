@@ -93,16 +93,6 @@ class WorkbookUI(ctk.CTkFrame):
         # Process button
         process_button = ctk.CTkButton(self, text="Process CSV Files", command=self.process_csv_files, width=250)
         process_button.grid(row=14, column=0, columnspan=2, padx=10, pady=10)
-
-    # def on_select_workbook(self, event=None):
-    #     # Get the name of the selected item
-    #     selected_name = self.workbook_optionmenu.get()
-
-    #     # Find the index of this name in the excel_file_names list
-    #     index = next(i for i, (name, _) in enumerate(self.excel_files) if name == selected_name)
-
-    #     # Get the corresponding tuple from the excel_files list
-    #     self.selected_file = self.excel_files[index]
         
     def on_select_workbook(self, event=None):
         # Get the name of the selected item

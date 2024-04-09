@@ -1,40 +1,164 @@
-All American Burger Bar, LLC: 86.22
-All In Stucco, LLC: 202.32
-Alpha 3D, LLC: 129.13
-Camac 255 Corporation: 185.44
-Chuis Cleaning, LLC: 86.7
-Daniellas Shop, LLC: 125.49
-Dashit Performance, LLC: 113.87
-Endless Automotive, LLC: 185.92
-Fresh First USA, Inc,: 94.57
-Get To Work, Inc.: 92.16
-Glass Tech Custom Glass and Mirror, LLC: 122.98
-H & H Stores, LLC: 58.2
-Halpern & Associates, LLC: 131.86
-Hidalgo Investment Group, Inc.: 334.65
-Holden Earth Products, Inc.: 200.93
-Hy-Point Electric, Inc.: 339.5
-Jeffrey Restaurant Supplies, LLC: 297.07
-KMS Trans, Inc.: 209.3
-Lauren A. Gidley: 183.65
-MDC Contracting, Inc.: 63.05
-Matthew Ryan McElfresh: 99.77
-Mountaineers School of Autism, Inc.: 192.61
-OSR Services, LLC: 175.81
-Olympia Group, LLC: 29.1
-R & R Truck Lines, Inc.: 140.55
-Richardson Services, LLC: 125.63
-Rock Enterprise Incorporated: 241.05
-Shannon John Garcia: 186.73
-Ska Interiors, LLC: 134.02
-Solely Fuego, LLC: 3645.16
-Stone Concepts Corporation: 62.08
-US Hauling, Inc.: 191.15
-VIG Solar Electric & HVAC, LLC: 245.97
-VetBizCorp, LLC: 2811.06
-Wave Global Services, LLC: 175.81
-Wiseman WEARS Three60, LLC: 145.34
-Xtreme Pool Builders, LLC: 124.96
-Zinniel Electric Co.: 205.83
-iPin Investors, LLC: 109.12
-All: 12284.76
+Merchant Name: 0                All American Burger Bar, LLC
+1                          All In Stucco, LLC
+2                               Alpha 3D, LLC
+3                       Camac 255 Corporation
+4                         Chuis Cleaning, LLC
+5                         Daniellas Shop, LLC
+6                     Dashit Performance, LLC
+7                     Endless Automotive, LLC
+8                       Fresh First USA, Inc,
+9                           Get To Work, Inc.
+10    Glass Tech Custom Glass and Mirror, LLC
+11                          H & H Stores, LLC
+12                  Halpern & Associates, LLC
+13             Hidalgo Investment Group, Inc.
+14                Holden Earth Products, Inc.
+15                    Hy-Point Electric, Inc.
+16           Jeffrey Restaurant Supplies, LLC
+17                            KMS Trans, Inc.
+18                           Lauren A. Gidley
+19                      MDC Contracting, Inc.
+20                     Matthew Ryan McElfresh
+21        Mountaineers School of Autism, Inc.
+22                          OSR Services, LLC
+23                         Olympia Group, LLC
+24                    R & R Truck Lines, Inc.
+25                   Richardson Services, LLC
+26               Rock Enterprise Incorporated
+27                        Shannon John Garcia
+28                         Ska Interiors, LLC
+29                          Solely Fuego, LLC
+30                 Stone Concepts Corporation
+31                           US Hauling, Inc.
+32             VIG Solar Electric & HVAC, LLC
+33                            VetBizCorp, LLC
+34                  Wave Global Services, LLC
+35                 Wiseman WEARS Three60, LLC
+36                  Xtreme Pool Builders, LLC
+37                       Zinniel Electric Co.
+38                        iPin Investors, LLC
+39                                        All
+Name: Merchant Name, dtype: object
+Sum of Syn Gross Amount: 0        88.89
+1       208.58
+2       133.12
+3       191.18
+4        89.38
+5       129.38
+6       117.39
+7       191.67
+8        97.50
+9        95.01
+10      126.78
+11       60.00
+12      135.94
+13      345.00
+14      207.14
+15      350.00
+16      306.26
+17      215.77
+18      189.33
+19       65.00
+20      102.86
+21      198.57
+22      181.25
+23       30.00
+24      144.90
+25      129.52
+26      248.50
+27      192.51
+28      138.17
+29     3757.90
+30       64.00
+31      197.06
+32      253.57
+33     2898.00
+34      181.25
+35      149.84
+36      128.82
+37      212.20
+38      112.50
+39    12664.74
+Name: Sum of Syn Gross Amount, dtype: float64
+Sum of Syn Net Amount: 0        86.22
+1       202.32
+2       129.13
+3       185.44
+4        86.70
+5       125.49
+6       113.87
+7       185.92
+8        94.57
+9        92.16
+10      122.98
+11       58.20
+12      131.86
+13      334.65
+14      200.93
+15      339.50
+16      297.07
+17      209.30
+18      183.65
+19       63.05
+20       99.77
+21      192.61
+22      175.81
+23       29.10
+24      140.55
+25      125.63
+26      241.05
+27      186.73
+28      134.02
+29     3645.16
+30       62.08
+31      191.15
+32      245.97
+33     2811.06
+34      175.81
+35      145.34
+36      124.96
+37      205.83
+38      109.12
+39    12284.76
+Name: Sum of Syn Net Amount, dtype: float64
+Total Servicing Fee: 0       2.67
+1       6.26
+2       3.99
+3       5.74
+4       2.68
+5       3.89
+6       3.52
+7       5.75
+8       2.93
+9       2.85
+10      3.80
+11      1.80
+12      4.08
+13     10.35
+14      6.21
+15     10.50
+16      9.19
+17      6.47
+18      5.68
+19      1.95
+20      3.09
+21      5.96
+22      5.44
+23      0.90
+24      4.35
+25      3.89
+26      7.45
+27      5.78
+28      4.15
+29    112.74
+30      1.92
+31      5.91
+32      7.60
+33     86.94
+34      5.44
+35      4.50
+36      3.86
+37      6.37
+38      3.38
+39    379.98
+Name: Total Servicing Fee, dtype: float64
