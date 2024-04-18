@@ -6,7 +6,8 @@ from parsers.boom_parser import parse_boom
 from parsers.bhb_parser import parse_bhb
 from parsers.acs_parser import parse_acs
 from parsers.cv_parser import parse_cv
-
+from log import log_to_file
+from datetime import datetime
 class DashboardUI(ctk.CTkFrame):
     def __init__(self, master, excel_files, user_name, workbook_callback, data_processed_callback):
         super().__init__(master)
@@ -15,8 +16,6 @@ class DashboardUI(ctk.CTkFrame):
         self.data_processed_callback = data_processed_callback
         self.workbook_optionmenu_var = tk.StringVar(self)
         self.output_dir_var = tk.StringVar(self)
-        
-
 
         excel_file_names = [user_name for user_name, _ in excel_files]
 
@@ -45,9 +44,6 @@ class DashboardUI(ctk.CTkFrame):
         # Add an output directory label
         self.output_dir_label = ctk.CTkLabel(self.sidebar_frame, text="Output Directory:", anchor="w")
         self.output_dir_label.grid(row=4, column=0, padx=20, pady=(10, 0))
-
-        # Add a StringVar to hold the directory path
-        self.output_dir_var = tk.StringVar(self)
 
         # Add an entry widget linked to the StringVar
         self.output_dir_entry = ctk.CTkEntry(self.sidebar_frame, textvariable=self.output_dir_var, width=120, placeholder_text="Select Folder")
@@ -152,7 +148,6 @@ class DashboardUI(ctk.CTkFrame):
 
     # Inside the DashboardUI class
 
-
     def check_output_directory(self, *args):
         directory = self.output_dir_var.get()
         if directory:
@@ -212,6 +207,7 @@ class DashboardUI(ctk.CTkFrame):
         if index is not None:
             self.selected_file = self.excel_files[index]
             self.workbook_callback(self.selected_file, self.output_dir_var.get())
+            log_to_file("Processing workbook...", self.output_dir_var.get())
         else:
             self.selected_file = None
 
@@ -261,6 +257,7 @@ class DashboardUI(ctk.CTkFrame):
                     self.clearview_entry.insert(0, file_path)
                 else:
                     # Handle unrecognized section
+                    log_to_file(f"Unrecognized section: {section}", self.output_dir_var.get())
                     pass
   
 
@@ -280,6 +277,7 @@ class DashboardUI(ctk.CTkFrame):
             if kings_error:
                 self.kings_error_label.configure(text=f"Error with {kings_error} in Kings CSV File. Ensure proper CSV was uploaded.", text_color="red")
                 errors.append(kings_error)
+                log_to_file(f"Error with {kings_error} in Kings CSV File. Ensure proper CSV was uploaded.", self.output_dir_var.get())
 
         # Process Boom CSV
         if self.csv_paths["Boom"]:
@@ -287,6 +285,7 @@ class DashboardUI(ctk.CTkFrame):
             if boom_error:
                 self.boom_error_label.configure(text=f"Error with {boom_error} in Boom CSV File. Ensure proper CSV was uploaded.", text_color="red")
                 errors.append(boom_error)
+                log_to_file(f"Error with {boom_error} in Boom CSV File. Ensure proper CSV was uploaded.", self.output_dir_var.get())
 
         # Process BHB CSV
         if self.csv_paths["BHB"]:
@@ -294,6 +293,7 @@ class DashboardUI(ctk.CTkFrame):
             if bhb_error:
                 self.bhb_error_label.configure(text=f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.", text_color="red")
                 errors.append(bhb_error)
+                log_to_file(f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.", self.output_dir_var.get())
 
         # Process ACS CSV
         if self.csv_paths["ACS"]:
@@ -301,6 +301,7 @@ class DashboardUI(ctk.CTkFrame):
             if acs_error:
                 self.acs_error_label.configure(text=f"Error with {acs_error}. Ensure proper CSV was uploaded.", text_color="red")
                 errors.append(acs_error)
+                log_to_file(f"Error with {acs_error}. Ensure proper CSV was uploaded.", self.output_dir_var.get())
 
         # Process CV CSV
         if self.csv_paths["CV"]:
@@ -309,24 +310,29 @@ class DashboardUI(ctk.CTkFrame):
                 clearview_length_error = "There should be exactly 5 CSV files for CV."
                 self.clearview_error_label.configure(text=clearview_length_error, text_color="red")
                 errors.append(clearview_length_error)
+                log_to_file(clearview_length_error, self.output_dir_var.get())
             if len(self.csv_paths["CV"]) != len(set(self.csv_paths["CV"])):
                 clearview_dup_error = "Duplicate files detected for CV."
                 self.clearview_error_label.configure(text=clearview_dup_error, text_color="red")
                 errors.append(clearview_dup_error)
+                log_to_file(clearview_dup_error, self.output_dir_var.get())
             else:
                 # Process each CV CSV file
                 for csv_path in self.csv_paths["CV"]:
                     clearview_pivot_table, clearview_total_gross_amount, clearview_total_net_amount, clearview_total_fee, clearview_error = self.parse_and_handle_csv("CV", csv_path)
                     if clearview_error:
                         errors.append(clearview_error)
+                        log_to_file(f"Error with {clearview_error}. Ensure proper CSV was uploaded.", self.output_dir_var.get())
 
                 # If there are errors specific to CV, display them
                 if errors:
                     clearview_error_message = " | ".join(errors)
                     truncated_error_message = (clearview_error_message[:47] + '...') if len(clearview_error_message) > 50 else clearview_error_message
                     self.clearview_error_label.configure(text=f"Errors with CV files: {truncated_error_message}", text_color="red")
+                    log_to_file(f"Errors with CV files: {clearview_error_message}", self.output_dir_var.get())
         
         if not errors:
+            log_to_file("All CSV files processed successfully.", self.output_dir_var.get())
             self.data_processed_callback({
                 "Kings": (kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee, kings_error if kings_error else None),
                 "Boom": (boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee, kings_error if kings_error else None),
@@ -337,19 +343,22 @@ class DashboardUI(ctk.CTkFrame):
             )
 
     def parse_and_handle_csv(self, section, csv_path=None):
-        csv_path = self.csv_paths[section]
-        if section == "Kings":
-            return parse_kings(csv_path, self.output_dir_var.get())
-        elif section == "Boom":
-            return parse_boom(csv_path, self.output_dir_var.get())
-        elif section == "BHB":
-            return parse_bhb(csv_path, self.output_dir_var.get())
-        elif section == "ACS":
-            return parse_acs(csv_path, self.output_dir_var.get())
-        elif section == "CV":
-            return parse_cv(csv_path, self.output_dir_var.get())
-        else:
-            # It might be useful to return an error if the section isn't recognized
-            return (None, None, None, None, f"Unrecognized section: {section}")
-
-
+        try:
+            csv_path = self.csv_paths[section]
+            if section == "Kings":
+                return parse_kings(csv_path, self.output_dir_var.get())
+            elif section == "Boom":
+                return parse_boom(csv_path, self.output_dir_var.get())
+            elif section == "BHB":
+                return parse_bhb(csv_path, self.output_dir_var.get())
+            elif section == "ACS":
+                return parse_acs(csv_path, self.output_dir_var.get())
+            elif section == "CV":
+                return parse_cv(csv_path, self.output_dir_var.get())
+            else:
+                return (None, None, None, None, f"Unrecognized section: {section}")
+        except Exception as e:
+            # If any exception occurs, log it and return an error message with the exception detail.
+            error_message = f"An error occurred while processing the {section} CSV: {str(e)}"
+            log_to_file(error_message, self.output_dir_var.get())
+            return (None, None, None, None, error_message)

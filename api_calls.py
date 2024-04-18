@@ -1,5 +1,5 @@
 import requests
-from auth import global_access_token
+from log import log_to_file
 
 def get_excel_files(access_token):
     if access_token is None:

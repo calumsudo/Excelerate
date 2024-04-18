@@ -3,7 +3,7 @@ from ui.dashboard_ui import DashboardUI
 from workbook import get_workbook_data, add_data_to_sheet
 import customtkinter as ctk
 from api_calls import get_excel_files, download_excel_workbook, update_workbook
-
+from log import log_to_file
 
 ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -44,9 +44,12 @@ class App(ctk.CTk):
 
     def workbook_callback(self, selected_workbook, output_path):
         # Define what should happen when a workbook is selected
+        self.output_path = output_path
         print("Selected workbook:", selected_workbook)
+        log_to_file("Selected workbook: " + str(selected_workbook), output_path)
         if self.access_token:  # Check if the access token is available
             print("Downloading workbook...")
+            log_to_file("Downloading workbook...", output_path)
             # Use the stored access_token
             workbook_bytes = download_excel_workbook(self.access_token, selected_workbook[1])
             self.selected_workbook = selected_workbook
@@ -58,6 +61,7 @@ class App(ctk.CTk):
             # The rest of your code to handle the workbook...
         else:
             print("Access token is not available.")
+            log_to_file("Access token is not available.", output_path)
 
 
     def show_workbook_ui(self, excel_files, user_name):
@@ -73,6 +77,7 @@ class App(ctk.CTk):
         sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
 
         print("Data processed:", data)
+        log_to_file("Data processed: " + str(data), self.output_path)
 
         for sheet_name in sheet_names:
             if sheet_name in data:
@@ -81,20 +86,26 @@ class App(ctk.CTk):
                 # Unpack the values from sheet_data
                 # Note: Ensure that the structure of sheet_data is consistent across different sheets
                 pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
+                log_to_file(f"Processing {sheet_name} data...", self.output_path)
+                log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount}", self.output_path)
+                log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount}", self.output_path)
+                log_to_file(f"Total Fee in {sheet_name}: {total_fee}", self.output_path)
+
                 
                 # If there is no error, proceed with adding data to the sheet
                 if not error:
                     # Assuming you have a function `add_data_to_sheet` that accepts these parameters
                     # You might need to modify it to handle each sheet's specific data structure
                     updated_bytes = add_data_to_sheet(self.workbook, pivot_table, sheet_name)
+                    log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path)
                     print(f"Data added to sheet '{sheet_name}'.")
-                    print(f"HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH {self.selected_workbook[1]}")
                     # Update the workbook with the new data
                     update_workbook(self.access_token, self.selected_workbook[1], updated_bytes)
 
                 else:
                     # Handle the error, maybe log it or show a message to the user
                     print(f"Error processing {sheet_name} data:", error)
+                    log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path)
 
         
 

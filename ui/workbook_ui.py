@@ -223,7 +223,7 @@ class WorkbookUI(ctk.CTkFrame):
         self.error_label.configure(text=message)
 
     def browse_csv(self, entity):
-        file_path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        file_path = filedialog.askopenfilename(filetypes=[("All Files", "*.*"), ("CSV Files", "*.csv"), ("Excel Files", "*.xlsx")])
         if file_path:
             if entity == "Kings":
                 self.csv_paths["Kings"] = file_path
