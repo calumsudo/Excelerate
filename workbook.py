@@ -287,30 +287,38 @@ def add_net_rtr_column_if_needed(worksheet, header_row=2):
             new_cell.number_format = copy(left_cell.number_format)
             new_cell.protection = copy(left_cell.protection)
             new_cell.alignment = copy(left_cell.alignment)
-
-    update_total_net_rtr_formula(worksheet, net_rtr_column_index)
-        
-    return get_column_letter(net_rtr_column_index)
-
-def update_total_net_rtr_formula(worksheet, net_rtr_column):
-    total_net_rtr_header = "Total Net RTR Payment Received"
-    header_row = 2  # Assuming headers are in the second row
     
-    # Iterate through cells in the header row without using values_only=True
+    added_col = get_column_letter(net_rtr_column_index)
+
+    update_total_net_rtr_formula(worksheet, added_col)
+        
+    return added_col
+
+def update_total_net_rtr_formula(worksheet, net_rtr_column, header_row=2):
+    # Find the column letter for the "Total Net RTR Payment Received" column
+    total_net_rtr_header = "Total Net RTR Payment Received"
+    total_net_rtr_column = None
     for cell in worksheet[header_row]:
-        # Now cell is a Cell object, and you can access cell.value
         if cell.value == total_net_rtr_header:
-            # Now correctly access the cell's attributes
-            # Find the column letter for the cell
-            col_letter = openpyxl.utils.get_column_letter(cell.column)
-            # Update the formula for the entire column starting from the next row of the header
-            for row in range(header_row + 1, worksheet.max_row + 1):
-                formula_cell = f'{col_letter}{row}'
-                # Assuming you want to sum from AG (column 33) to the new Net RTR column for each row
-                start_column_letter = openpyxl.utils.get_column_letter(33)  # AG column
-                end_column_letter = net_rtr_column
-                worksheet[formula_cell].value = f'=SUM({start_column_letter}{row}:{end_column_letter}{row})'
-            break  # Exit loop after updating
+            total_net_rtr_column = openpyxl.utils.get_column_letter(cell.column)
+            break
+
+    # If the "Total Net RTR Payment Received" column is not found, return
+    if total_net_rtr_column is None:
+        return
+
+    # Get the column number for the "Total Net RTR Payment Received" column
+    total_net_rtr_column_number = openpyxl.utils.column_index_from_string(total_net_rtr_column)
+
+    # Get the column number for the newly inserted Net RTR column
+    net_rtr_column_number = openpyxl.utils.column_index_from_string(net_rtr_column)
+
+    # Update the formula for each row in the "Total Net RTR Payment Received" column
+    start_column = openpyxl.utils.get_column_letter(total_net_rtr_column_number + 1)
+    for row in range(header_row + 1, worksheet.max_row + 1):
+        cell = worksheet[f"{total_net_rtr_column}{row}"]
+        formula = f"=SUM({start_column}{row}:{net_rtr_column}{row})"
+        cell.value = formula
 
 # Function to map 'Sum of Syn Net Amount' from CSV to Excel
 # def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
