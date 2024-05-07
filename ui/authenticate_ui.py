@@ -4,7 +4,6 @@ from auth import initiate_device_flow, authenticate
 from PIL import Image
 import os
 
-
 class AuthenticateUI(ctk.CTkFrame):
     def __init__(self, master, authentication_callback):
         super().__init__(master)

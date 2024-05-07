@@ -22,18 +22,15 @@ class App(ctk.CTk):
         self.authenticate_ui = AuthenticateUI(self, self.authentication_callback)
         self.authenticate_ui.pack(pady=20)
 
-        #self.workbook_ui = None
         self.dashboard_ui = None
 
-        # self.dashboard_ui = DashboardUI(self, get_excel_files("access_token"), "Calum", self.workbook_callback)
-        # self.dashboard_ui.pack(pady=20)
 
 
 
     def authentication_callback(self, success, response, access_token):
         if success:
-            print("Authentication successful!")
-            print("Response:", response)
+            # log_to_file("Authentication successful!", self.output_path, self.portfolio_name)
+            # log_to_file("User: " + response['displayName'], self.output_path, self.portfolio_name)
             name = response['displayName']
             self.access_token = access_token
 
@@ -42,42 +39,37 @@ class App(ctk.CTk):
         else:
             self.authenticate_ui.label.configure(text="Authentication failed.")
 
-    def workbook_callback(self, selected_workbook, output_path):
+    def workbook_callback(self, selected_workbook, output_path, portfolio_name):
         # Define what should happen when a workbook is selected
         self.output_path = output_path
-        print("Selected workbook:", selected_workbook)
-        log_to_file("Selected workbook: " + str(selected_workbook), output_path)
+        self.portfolio_name = portfolio_name 
+
+        log_to_file("Selected workbook: " + str(selected_workbook), output_path, portfolio_name)
         if self.access_token:  # Check if the access token is available
-            print("Downloading workbook...")
-            log_to_file("Downloading workbook...", output_path)
+            log_to_file("Downloading workbook...", output_path, portfolio_name)
             # Use the stored access_token
-            workbook_bytes = download_excel_workbook(self.access_token, selected_workbook[1])
+            workbook_bytes = download_excel_workbook(self.access_token, selected_workbook[1], output_path, portfolio_name)
             self.selected_workbook = selected_workbook
 
             # workbook = load_workbook(filename=io.BytesIO(workbook_bytes))
-            workbook = get_workbook_data(workbook_bytes, selected_workbook[0], output_path)
+            workbook = get_workbook_data(workbook_bytes, selected_workbook[0], output_path, portfolio_name)
             self.workbook = workbook
 
             # The rest of your code to handle the workbook...
         else:
-            print("Access token is not available.")
-            log_to_file("Access token is not available.", output_path)
+            log_to_file("Access token is not available.", output_path, portfolio_name)
 
 
     def show_workbook_ui(self, excel_files, user_name):
         # Assuming 'excel_files' contains a list of workbook paths
         self.dashboard_ui = DashboardUI(self, excel_files, user_name, self.workbook_callback, self.handle_data_processed)
         self.dashboard_ui.pack(pady=20)
-        # self.workbook_ui = WorkbookUI(self, excel_files, name, self.workbook_callback)
-        # self.workbook_ui.pack(pady=20)
 
 
     def handle_data_processed(self, data):
         # List of sheets to try
         sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
-
-        print("Data processed:", data)
-        log_to_file("Data processed: " + str(data), self.output_path)
+        log_to_file("Data processed: " + str(data), self.output_path, self.portfolio_name)
 
         for sheet_name in sheet_names:
             if sheet_name in data:
@@ -86,29 +78,25 @@ class App(ctk.CTk):
                 # Unpack the values from sheet_data
                 # Note: Ensure that the structure of sheet_data is consistent across different sheets
                 pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
-                log_to_file(f"Processing {sheet_name} data...", self.output_path)
-                log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount}", self.output_path)
-                log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount}", self.output_path)
-                log_to_file(f"Total Fee in {sheet_name}: {total_fee}", self.output_path)
+                log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
+                log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount}", self.output_path, self.portfolio_name)
+                log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount}", self.output_path, self.portfolio_name)
+                log_to_file(f"Total Fee in {sheet_name}: {total_fee}", self.output_path, self.portfolio_name)
 
                 
                 # If there is no error, proceed with adding data to the sheet
                 if not error:
                     # Assuming you have a function `add_data_to_sheet` that accepts these parameters
                     # You might need to modify it to handle each sheet's specific data structure
-                    updated_bytes = add_data_to_sheet(self.workbook, pivot_table, sheet_name)
-                    log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path)
-                    print(f"Data added to sheet '{sheet_name}'.")
+                    final_bytes, detailed_unmatched_info = add_data_to_sheet(self.workbook, pivot_table, sheet_name, self.output_path, self.portfolio_name)
+                    log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path, self.portfolio_name)
                     # Update the workbook with the new data
-                    update_workbook(self.access_token, self.selected_workbook[1], updated_bytes)
+                    updated_content = update_workbook(self.access_token, self.selected_workbook[1], final_bytes, self.output_path, self.portfolio_name)
+                    self.dashboard_ui.handle_update_response(updated_content, detailed_unmatched_info)
 
                 else:
                     # Handle the error, maybe log it or show a message to the user
-                    print(f"Error processing {sheet_name} data:", error)
-                    log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path)
-
-        
-
+                    log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
 
 
 if __name__ == "__main__":

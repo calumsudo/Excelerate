@@ -2,18 +2,6 @@ import pandas as pd
 import openpyxl
 from openpyxl.utils import get_column_letter
 from datetime import datetime, timedelta
-import os
-
-# Function to find duplicates in column B
-# def find_duplicates_in_column(worksheet, column='B'):
-#     values = {}
-#     duplicates = []
-#     for row in worksheet.iter_rows(min_col=2, max_col=2, values_only=True):
-#         merchant = row[0]
-#         if merchant in values:
-#             duplicates.append(merchant)
-#         values[merchant] = True
-#     return duplicates
 
 # Function to add a column if the current Friday's Net RTR column does not exist
 def add_net_rtr_column_if_needed(worksheet, header_row=2):
@@ -67,26 +55,6 @@ def update_total_net_rtr_formula(worksheet, net_rtr_column):
                 worksheet[formula_cell].value = f'=SUM({start_column_letter}{row}:{end_column_letter}{row})'
             break  # Exit loop after updating
 
-# Function to map 'Sum of Syn Net Amount' from CSV to Excel
-# def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
-#     merchant_to_row = {}
-#     # We need to iterate without 'values_only' to access the 'row' attribute of Cell objects.
-#     for row in worksheet.iter_rows(min_row=header_row + 1, min_col=2, max_col=2):  # Adjust min_col and max_col to target Column B
-#         cell = row[0]  # This is the first cell in the row, which corresponds to Column B
-#         if cell.value:  # Make sure the cell has a value
-#             merchant_to_row[cell.value.strip()] = cell.row  # Map the merchant name to its row number
-
-#     # Now, let's loop through the DataFrame and assign values in Excel
-#     for index, row in df_csv.iterrows():
-#         merchant_name = row['Merchant Name'].strip()  # Strip to ensure matching whitespace is not an issue
-#         net_amount = row['Sum of Syn Net Amount']
-#         # If the merchant is found in the dictionary, we write its net amount to Excel
-#         if merchant_name in merchant_to_row:
-#             excel_row_num = merchant_to_row[merchant_name]
-#             cell_reference = f'{net_rtr_column}{excel_row_num}'
-#             worksheet[cell_reference].value = net_amount
-#         else:
-#             print(f"Merchant '{merchant_name}' not found in Excel sheet.")
 def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column, header_row=2):
     advance_id_to_row = {}
     # Adjust to column 'E' for 'Funder Advance ID'

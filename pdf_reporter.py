@@ -4,7 +4,7 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Par
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.styles import ParagraphStyle
-
+from PyPDF2 import PdfFileReader, PdfFileWriter
 
 import pandas as pd
 from datetime import datetime
@@ -25,25 +25,44 @@ def dataframe_to_table_style_data(df, font_size=8):
     ])
     return data, style
 
+def generate_unmatched_merchants_table(info_list, sheet_name):
+    """Generate a table for unmatched merchants for a given sheet."""
+    data = [["Advance ID", "Merchant Name"]] + [[item['advance_id'], item['merchant_name']] for item in info_list if item['sheet_name'] == sheet_name]
+    if not data[1:]:  # Check if there is no data besides the header
+        return None, None
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTSIZE', (0, 0), (-1, -1), 8),
+    ])
+    return data, style
+
+
 def generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net_amount, kings_total_fee,
                     boom_pivot_table, boom_total_gross_amount, boom_total_net_amount, boom_total_fee,
                     bhb_pivot_table, bhb_total_gross_amount, bhb_total_net_amount, bhb_total_fee,
                     cv_pivot_table, cv_total_gross_amount, cv_total_net_amount, cv_total_fee,
                     acs_pivot_table, acs_total_gross_amount, acs_total_net_amount, acs_total_fee,
-                    selected_file, directory, output_name):
+                    selected_file, directory, portfolio_name, detailed_unmatched_info):
     """Generates a PDF report with the provided data and saves it to the specified directory."""
     # Create the directory if it doesn't exist
     # Get the current date
-    current_date = datetime.now()
+    if(portfolio_name == 1):
+        portfolio_name = "Alder"
+    elif(portfolio_name == 2):
+        portfolio_name = "White Rabbit"
 
+
+    print("PDF REPORTER FILE: ", detailed_unmatched_info)
     # Format the date as a string
-    date_string = current_date.strftime("%Y_%m_%d")
+    today_date = datetime.now().strftime("%m_%d_%Y")
 
     # Create the output name
-    output_name = f"Excelerator_Report_{date_string}.pdf"
+    output_name = f"Excelerator_Report_{today_date}.pdf"
 
     # Specify the directory
-    directory = os.path.expanduser("~/Desktop/Excelerator")
+    directory = os.path.expanduser(f"{directory}/{portfolio_name}/{today_date}")
 
     # Create the directory if it doesn't exist
     os.makedirs(directory, exist_ok=True)
@@ -57,7 +76,7 @@ def generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net
     styleSheet = getSampleStyleSheet()
 
     # Title for the report
-    elements.append(Paragraph(f"Excelerator Report {date_string}", styleSheet['Title']))
+    elements.append(Paragraph(f"Excelerator Report for {portfolio_name} week of {today_date}", styleSheet['Title']))
     elements.append(Spacer(1, 0.25 * inch))
 
     # Create a new style for 'Subtitle'
@@ -79,7 +98,10 @@ def generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net
     for title, df in [("Kings", kings_pivot_table), ("Boom", boom_pivot_table),
                       ("BHB", bhb_pivot_table), ("ClearView", cv_pivot_table), ("ACS", acs_pivot_table)]:
         elements.append(Paragraph(title, styleSheet['Heading2']))
-        data, style = dataframe_to_table_style_data(df, font_size=8)
+        if title == "ACS":
+            data, style = dataframe_to_table_style_data(df, font_size=6)  # Smaller font size for ACS table
+        else:
+            data, style = dataframe_to_table_style_data(df, font_size=8)
         table = Table(data)
         table.setStyle(style)
         elements.append(table)
@@ -105,5 +127,13 @@ def generate_report(kings_pivot_table, kings_total_gross_amount, kings_total_net
             elements.append(Paragraph(f"Total Net Amount: {acs_total_net_amount}", styleSheet['BodyText']))
             elements.append(Paragraph(f"Total Fee: {acs_total_fee}", styleSheet['BodyText']))
         elements.append(Spacer(1, 0.25 * inch))
+
+        unmatched_data, unmatched_style = generate_unmatched_merchants_table(detailed_unmatched_info, title)
+        if unmatched_data:
+            elements.append(Paragraph(f"{title} Unmatched Merchants", styleSheet['Heading3']))
+            unmatched_table = Table(unmatched_data)
+            unmatched_table.setStyle(unmatched_style)
+            elements.append(unmatched_table)
+            elements.append(Spacer(1, 0.25 * inch))
 
     doc.build(elements)

@@ -19,25 +19,20 @@ def initiate_device_flow():
     
     # Open the verification URL in the user's web browser
     webbrowser.open(flow['verification_uri'])
-    # print("User code: ", flow['user_code'])
     pyperclip.copy(flow['user_code'])
     
     return flow
 
 def authenticate(flow, callback):
     def run_authentication():
-        print("Checking for authentication...")
         app = msal.PublicClientApplication(APPLICATION_ID, authority=AUTHORITY_URL)
         result = app.acquire_token_by_device_flow(flow)
-        # print("RESULT: ", result)
 
         if "access_token" in result:
             access_token = result['access_token']
             headers = {'Authorization': 'Bearer ' + access_token}
             endpoint = base_url + 'me'
             response = requests.get(endpoint, headers=headers)
-            # print("RESPONSE: ", response)
-            # print("RESPONSE JSON: ", response.json())
             callback(True, response.json(), access_token)  # Pass the access_token to the callback
         else:
             callback(False, None, None)  # Indicate failure
