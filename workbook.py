@@ -8,10 +8,11 @@ from io import BytesIO
 from copy import copy
 from log import log_to_file
 
+
 def get_workbook_data(workbook_bytes, selected_file, output_path, portfolio_name):
-    if (portfolio_name == 1):
+    if portfolio_name == 1:
         portfolio_name = "Alder"
-    elif (portfolio_name == 2):
+    elif portfolio_name == 2:
         portfolio_name = "White Rabbit"
 
     workbook = load_workbook(filename=io.BytesIO(workbook_bytes))
@@ -19,31 +20,41 @@ def get_workbook_data(workbook_bytes, selected_file, output_path, portfolio_name
     # Save a copy of the workbook to local machine
     current_date = datetime.now()
     date_string = current_date.strftime("%m_%d_%Y")
-    os.makedirs(os.path.expanduser(f"{output_path}/{portfolio_name}/{date_string}"), exist_ok=True)
+    os.makedirs(
+        os.path.expanduser(f"{output_path}/{portfolio_name}/{date_string}"),
+        exist_ok=True,
+    )
     file_name = selected_file.removesuffix(".xlsx")
-    file_path_backup = os.path.expanduser(f"{output_path}/{portfolio_name}/{date_string}/{file_name}_BACKUP_{date_string}.xlsx")
+    file_path_backup = os.path.expanduser(
+        f"{output_path}/{portfolio_name}/{date_string}/{file_name}_BACKUP_{date_string}.xlsx"
+    )
 
     with open(file_path_backup, "wb") as file:
         file.write(workbook_bytes)
 
     return workbook
 
+
 # Function to add a column if the current Friday's Net RTR column does not exist
-def add_net_rtr_column_if_needed(worksheet, header_row=2):
-    current_friday = (datetime.now() + timedelta((4 - datetime.now().weekday()) % 7))
-    current_friday = f"{current_friday.month}/{current_friday.day}"
+def add_net_rtr_column_if_needed(worksheet, selected_date=None, header_row=2):
+    if selected_date:
+        month_day = selected_date.strftime("%-m/%-d")
+    else:
+        current_friday = datetime.now() + timedelta((4 - datetime.now().weekday()) % 7)
+        month_day = current_friday.strftime("%-m/%-d")
+
     rtr_balance_column = None
     net_rtr_column_index = None
-    
+
     # Find the R&H Net RTR Balance column index
     for idx, cell in enumerate(worksheet[header_row]):
         if cell.value and "R&H Net RTR Balance" in cell.value:
             rtr_balance_column = idx + 1  # Excel is 1-indexed
             break
 
-    # Check if the column for the current Friday already exists
+    # Check if the column for the selected date already exists
     for idx, cell in enumerate(worksheet[header_row]):
-        if cell.value and f'Net RTR {current_friday}' == cell.value:
+        if cell.value and f"Net RTR {month_day}" == cell.value:
             net_rtr_column_index = idx + 1  # Excel is 1-indexed
             break
 
@@ -51,13 +62,15 @@ def add_net_rtr_column_if_needed(worksheet, header_row=2):
     if rtr_balance_column is None:
         raise ValueError("R&H Net RTR Balance column not found in the sheet.")
 
-    # If the Net RTR column for the current Friday doesn't exist, we insert it before the R&H Net RTR Balance column
+    # If the Net RTR column for the selected date doesn't exist, we insert it before the R&H Net RTR Balance column
     if net_rtr_column_index is None:
         worksheet.insert_cols(rtr_balance_column)
         net_rtr_column_index = rtr_balance_column
 
         # Set the value for the header of the new column
-        worksheet.cell(row=header_row, column=net_rtr_column_index).value = f'Net RTR {current_friday}'
+        worksheet.cell(row=header_row, column=net_rtr_column_index).value = (
+            f"Net RTR {month_day}"
+        )
 
         # Set the worksheet name in the first row of the new column
         worksheet.cell(row=1, column=net_rtr_column_index).value = worksheet.title
@@ -73,12 +86,124 @@ def add_net_rtr_column_if_needed(worksheet, header_row=2):
             new_cell.number_format = copy(left_cell.number_format)
             new_cell.protection = copy(left_cell.protection)
             new_cell.alignment = copy(left_cell.alignment)
-    
+
     added_col = get_column_letter(net_rtr_column_index)
 
     update_total_net_rtr_formula(worksheet, added_col)
-        
+
     return added_col
+    if selected_date:
+        day_month = selected_date.strftime("/%%-d")
+    else:
+        current_friday = datetime.now() + timedelta((4 - datetime.now().weekday()) % 7)
+        day_month = current_friday.strftime("%-d/%-m")
+
+    print("Adding Net RTR column...", day_month)
+
+    rtr_balance_column = None
+    net_rtr_column_index = None
+
+    # Find the R&H Net RTR Balance column index
+    for idx, cell in enumerate(worksheet[header_row]):
+        if cell.value and "R&H Net RTR Balance" in cell.value:
+            rtr_balance_column = idx + 1  # Excel is 1-indexed
+            break
+
+    # Check if the column for the selected date already exists
+    for idx, cell in enumerate(worksheet[header_row]):
+        if cell.value and f"Net RTR {day_month}" == cell.value:
+            net_rtr_column_index = idx + 1  # Excel is 1-indexed
+            break
+
+    # If no RTR balance column found, something is wrong with the sheet format
+    if rtr_balance_column is None:
+        raise ValueError("R&H Net RTR Balance column not found in the sheet.")
+
+    # If the Net RTR column for the selected date doesn't exist, we insert it before the R&H Net RTR Balance column
+    if net_rtr_column_index is None:
+        worksheet.insert_cols(rtr_balance_column)
+        net_rtr_column_index = rtr_balance_column
+
+        # Set the value for the header of the new column
+        worksheet.cell(row=header_row, column=net_rtr_column_index).value = (
+            f"Net RTR {day_month}"
+        )
+
+        # Set the worksheet name in the first row of the new column
+        worksheet.cell(row=1, column=net_rtr_column_index).value = worksheet.title
+
+        # Copy formatting from the cell one column to the left for each cell in the new column
+        for row in range(1, worksheet.max_row + 1):
+            left_cell = worksheet.cell(row=row, column=net_rtr_column_index - 1)
+            new_cell = worksheet.cell(row=row, column=net_rtr_column_index)
+
+            new_cell.font = copy(left_cell.font)
+            new_cell.border = copy(left_cell.border)
+            new_cell.fill = copy(left_cell.fill)
+            new_cell.number_format = copy(left_cell.number_format)
+            new_cell.protection = copy(left_cell.protection)
+            new_cell.alignment = copy(left_cell.alignment)
+
+    added_col = get_column_letter(net_rtr_column_index)
+
+    update_total_net_rtr_formula(worksheet, added_col)
+
+    return added_col
+
+
+# def add_net_rtr_column_if_needed(worksheet, selected_date, header_row=2):
+#     day_month = selected_date.strftime("%m/%d").lstrip("0").replace("/0", "/")
+#     print("Adding Net RTR column...", day_month)
+#     current_friday = (datetime.now() + timedelta((4 - datetime.now().weekday()) % 7))
+#     current_friday = f"{current_friday.month}/{current_friday.day}"
+#     rtr_balance_column = None
+#     net_rtr_column_index = None
+
+#     # Find the R&H Net RTR Balance column index
+#     for idx, cell in enumerate(worksheet[header_row]):
+#         if cell.value and "R&H Net RTR Balance" in cell.value:
+#             rtr_balance_column = idx + 1  # Excel is 1-indexed
+#             break
+
+#     # Check if the column for the current Friday already exists
+#     for idx, cell in enumerate(worksheet[header_row]):
+#         if cell.value and f'Net RTR {current_friday}' == cell.value:
+#             net_rtr_column_index = idx + 1  # Excel is 1-indexed
+#             break
+
+#     # If no RTR balance column found, something is wrong with the sheet format
+#     if rtr_balance_column is None:
+#         raise ValueError("R&H Net RTR Balance column not found in the sheet.")
+
+#     # If the Net RTR column for the current Friday doesn't exist, we insert it before the R&H Net RTR Balance column
+#     if net_rtr_column_index is None:
+#         worksheet.insert_cols(rtr_balance_column)
+#         net_rtr_column_index = rtr_balance_column
+
+#         # Set the value for the header of the new column
+#         worksheet.cell(row=header_row, column=net_rtr_column_index).value = f'Net RTR {current_friday}'
+
+#         # Set the worksheet name in the first row of the new column
+#         worksheet.cell(row=1, column=net_rtr_column_index).value = worksheet.title
+
+#         # Copy formatting from the cell one column to the left for each cell in the new column
+#         for row in range(1, worksheet.max_row + 1):
+#             left_cell = worksheet.cell(row=row, column=net_rtr_column_index - 1)
+#             new_cell = worksheet.cell(row=row, column=net_rtr_column_index)
+
+#             new_cell.font = copy(left_cell.font)
+#             new_cell.border = copy(left_cell.border)
+#             new_cell.fill = copy(left_cell.fill)
+#             new_cell.number_format = copy(left_cell.number_format)
+#             new_cell.protection = copy(left_cell.protection)
+#             new_cell.alignment = copy(left_cell.alignment)
+
+#     added_col = get_column_letter(net_rtr_column_index)
+
+#     update_total_net_rtr_formula(worksheet, added_col)
+
+#     return added_col
+
 
 def update_total_net_rtr_formula(worksheet, net_rtr_column, header_row=2):
     # Find the column letter for the "Total Net RTR Payment Received" column
@@ -94,7 +219,9 @@ def update_total_net_rtr_formula(worksheet, net_rtr_column, header_row=2):
         return
 
     # Get the column number for the "Total Net RTR Payment Received" column
-    total_net_rtr_column_number = openpyxl.utils.column_index_from_string(total_net_rtr_column)
+    total_net_rtr_column_number = openpyxl.utils.column_index_from_string(
+        total_net_rtr_column
+    )
 
     # Get the column number for the newly inserted Net RTR column
     net_rtr_column_number = openpyxl.utils.column_index_from_string(net_rtr_column)
@@ -106,7 +233,10 @@ def update_total_net_rtr_formula(worksheet, net_rtr_column, header_row=2):
         formula = f"=SUM({start_column}{row}:{net_rtr_column}{row})"
         cell.value = formula
 
-def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column,  output_path, portfolio_name, header_row=2):
+
+def map_net_amount_to_excel(
+    worksheet, df_csv, net_rtr_column, output_path, portfolio_name, header_row=2
+):
     advance_id_to_row = {}
     # Adjust to column 'E' for 'Funder Advance ID'
     for row in worksheet.iter_rows(min_row=header_row + 1, min_col=5, max_col=5):
@@ -117,50 +247,80 @@ def map_net_amount_to_excel(worksheet, df_csv, net_rtr_column,  output_path, por
 
     # Mapping using 'Funder Advance ID'
     for index, row in df_csv.iterrows():
-        advance_id = str(row['Funder Advance ID']).strip()
+        advance_id = str(row["Funder Advance ID"]).strip()
 
         # Skip processing if 'Funder Advance ID' is 'All'
-        if advance_id == 'All':
+        if advance_id == "All":
             continue
 
-        net_amount = row['Sum of Syn Net Amount']
-        
+        net_amount = row["Sum of Syn Net Amount"]
+
         if advance_id in advance_id_to_row:
             excel_row_num = advance_id_to_row[advance_id]
-            cell_reference = f'{net_rtr_column}{excel_row_num}'
+            cell_reference = f"{net_rtr_column}{excel_row_num}"
             worksheet[cell_reference].value = net_amount
-            log_to_file(f"Advance ID '{advance_id}' mapped to row {excel_row_num} with net amount {net_amount}.", output_path, portfolio_name)
+            log_to_file(
+                f"Advance ID '{advance_id}' mapped to row {excel_row_num} with net amount {net_amount}.",
+                output_path,
+                portfolio_name,
+            )
         else:
-            log_to_file(f"Funder Advance ID '{advance_id}' not found in Excel sheet.", output_path, portfolio_name)
+            log_to_file(
+                f"Funder Advance ID '{advance_id}' not found in Excel sheet.",
+                output_path,
+                portfolio_name,
+            )
 
 
-
-def add_data_to_sheet(workbook, df, sheet_name, output_path, portfolio_name):
+def add_data_to_sheet(
+    workbook, df, sheet_name, output_path, portfolio_name, selected_date=None
+):
 
     # log_to_file(f"Advance IDs not found in Excel sheet: {unmatched_advance_ids}", output_path, portfolio_name)
     sheet = workbook[sheet_name]
     log_to_file(f"Adding data to sheet '{sheet_name}'...", output_path, portfolio_name)
 
     # Extract Advance IDs and Merchant Names from DataFrame
-    df_advance_ids = df[['Funder Advance ID', 'Merchant Name']].dropna(subset=['Funder Advance ID']).set_index('Funder Advance ID').to_dict('index')
+    df_advance_ids = (
+        df[["Funder Advance ID", "Merchant Name"]]
+        .dropna(subset=["Funder Advance ID"])
+        .set_index("Funder Advance ID")
+        .to_dict("index")
+    )
 
     # Extract Advance IDs from Excel worksheet
-    worksheet_advance_ids = {str(m[0]).strip(): m for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True) if m[0]}
+    worksheet_advance_ids = {
+        str(m[0]).strip(): m
+        for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True)
+        if m[0]
+    }
 
     # Find unmatched Advance IDs and corresponding Merchant Names
     unmatched_advance_ids = set(df_advance_ids) - set(worksheet_advance_ids)
-    unmatched_info = {aid: df_advance_ids[aid]['Merchant Name'] for aid in unmatched_advance_ids if aid != 'All' and df_advance_ids[aid]['Merchant Name'] != 'All'}
+    unmatched_info = {
+        aid: df_advance_ids[aid]["Merchant Name"]
+        for aid in unmatched_advance_ids
+        if aid != "All" and df_advance_ids[aid]["Merchant Name"] != "All"
+    }
 
     # Format unmatched info for logging
-    formatted_unmatched_info = ", ".join(f"{aid}: {info}" for aid, info in unmatched_info.items())
-    detailed_unmatched_info = [{'sheet_name': sheet_name, 'advance_id': aid, 'merchant_name': info} for aid, info in unmatched_info.items()]
+    formatted_unmatched_info = ", ".join(
+        f"{aid}: {info}" for aid, info in unmatched_info.items()
+    )
+    detailed_unmatched_info = [
+        {"sheet_name": sheet_name, "advance_id": aid, "merchant_name": info}
+        for aid, info in unmatched_info.items()
+    ]
 
-
-    log_to_file(f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}", output_path, portfolio_name)
+    log_to_file(
+        f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}",
+        output_path,
+        portfolio_name,
+    )
 
     # Ensure the Net RTR column is added and get its column letter
-    net_rtr_column = add_net_rtr_column_if_needed(sheet)
-    
+    net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
+
     # Updated to map using 'Advance ID'
     map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
 
@@ -170,4 +330,3 @@ def add_data_to_sheet(workbook, df, sheet_name, output_path, portfolio_name):
     output_bytes.seek(0)
     final_bytes = output_bytes.getvalue()
     return final_bytes, detailed_unmatched_info
-
