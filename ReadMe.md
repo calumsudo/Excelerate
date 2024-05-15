@@ -5,14 +5,9 @@
 </div>
 
 ![Python Version](https://img.shields.io/badge/Python-3.11.1-4571A1)
-
-<div align="center">
-  <!-- Example Badges -->
-  ![Python Version](https://img.shields.io/badge/Python-3.11.1-4571A1)
-  ![License](https://img.shields.io/github/license/calumsudo/Excelerate)
-  ![Last Commit](https://img.shields.io/github/last-commit/calumsudo/Excelerate)
-  ![Issues](https://img.shields.io/github/issues/calumsudo/Excelerate)
-</div>
+![License](https://img.shields.io/github/license/calumsudo/Excelerate)
+![Last Commit](https://img.shields.io/github/last-commit/calumsudo/Excelerate)
+![Issues](https://img.shields.io/github/issues/calumsudo/Excelerate)
 
 ## Introduction
 This document outlines the operational procedure for the 'Excelerate' application, which automates the integration of financial data from CSV files provided by various funders into a central Excel workbook stored in Microsoft OneDrive.
