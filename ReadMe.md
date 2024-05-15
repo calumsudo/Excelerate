@@ -11,6 +11,18 @@
 ## Introduction
 This document outlines the operational procedure for the 'Excelerate' application, which automates the integration of financial data from CSV files provided by various funders into a central Excel workbook stored in Microsoft OneDrive.
 
+## Install
+- Make sure you have Python Installed
+- Clone the repository `git clone https://github.com/calumsudo/Excelerate.git`
+- Then navigate to the root directory `cd /path/to/your/project`
+- Create Virtual Environment `python -m venv env`
+- Activate the Environment
+    - Windows: `.\env\Scripts\activate`
+    - MacOS / Linux: `source env/bin/activate`
+- Install the Dependencies: `pip install -r requirements.txt`
+- Start the program: `python main.py` or `python3 main.py`
+
+
 ## Workflow Steps
 
 ### 1. Launching the Application

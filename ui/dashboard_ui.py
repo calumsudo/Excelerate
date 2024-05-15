@@ -805,7 +805,12 @@ class DashboardUI(ctk.CTkFrame):
         self.acs_button.configure(state="disabled")
         self.clearview_button.configure(state="disabled")
         self.process_button.configure(state="disabled")
+        self.kings_error_label.configure(text="")
+        self.boom_error_label.configure(text="")
+        self.bhb_error_label.configure(text="")
+        self.acs_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
+        self.error_label.configure(text="")
 
     def handle_errors(self, error_message):
         # Handle the error message
