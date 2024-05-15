@@ -4,6 +4,8 @@
   <img src="assets/GitHub_Logo.png" alt="Project Logo" width="300" />
 </div>
 
+![Python Version](https://img.shields.io/badge/Python-3.11.1-4571A1)
+
 <div align="center">
   <!-- Example Badges -->
   ![Python Version](https://img.shields.io/badge/Python-3.11.1-4571A1)
