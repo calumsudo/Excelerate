@@ -11,6 +11,7 @@
   ![Last Commit](https://img.shields.io/github/last-commit/calumsudo/Excelerate)
   ![Issues](https://img.shields.io/github/issues/calumsudo/Excelerate)
 </div>
+
 ## Introduction
 This document outlines the operational procedure for the 'Excelerate' application, which automates the integration of financial data from CSV files provided by various funders into a central Excel workbook stored in Microsoft OneDrive.
 
