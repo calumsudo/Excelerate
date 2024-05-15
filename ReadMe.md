@@ -5,7 +5,6 @@
 </div>
 
 ![Python Version](https://img.shields.io/badge/Python-3.11.1-4571A1)
-![License](https://img.shields.io/github/license/calumsudo/Excelerate)
 ![Last Commit](https://img.shields.io/github/last-commit/calumsudo/Excelerate)
 ![Issues](https://img.shields.io/github/issues/calumsudo/Excelerate)
 
