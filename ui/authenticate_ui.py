@@ -1,4 +1,3 @@
-# authenticate_ui.py
 import customtkinter as ctk
 from auth import initiate_device_flow, authenticate
 from PIL import Image
