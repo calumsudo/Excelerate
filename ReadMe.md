@@ -1,5 +1,5 @@
 # Excelerate - Process Flow Documentation
-![Project Logo](ui/ExcelerateLogo.png)
+![Project Logo](assets/GitHub_Logo.png)
 
 ## Introduction
 This document outlines the operational procedure for the 'Excelerate' application, which automates the integration of financial data from CSV files provided by various funders into a central Excel workbook stored in Microsoft OneDrive.
@@ -9,10 +9,12 @@ This document outlines the operational procedure for the 'Excelerate' applicatio
 ### 1. Launching the Application
 - The user starts the 'Excelerate' application.
 - A user interface (UI) loads, presenting an authentication button.
+- ![Authentication Screen](assets/Excelerate_Authentication.png)
 
 ### 2. Authentication
 - The user clicks the authentication button to begin the process.
 - Once authentication is successful, the UI updates to display a new window.
+- ![Microsoft Authentication](assets/Microsoft_Authentication.png)
 
 ### 3. Workbook Selection
 - In the updated UI, the user is prompted to select a workbook from a list.
