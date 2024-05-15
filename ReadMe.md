@@ -1,6 +1,11 @@
 # Excelerate - Process Flow Documentation
 ![Project Logo](assets/GitHub_Logo.png)
 
+<div align="center">
+  <img src="assets/logo.png" alt="Project Logo" width="300" />
+</div>
+
+
 ## Introduction
 This document outlines the operational procedure for the 'Excelerate' application, which automates the integration of financial data from CSV files provided by various funders into a central Excel workbook stored in Microsoft OneDrive.
 
