@@ -2,7 +2,7 @@
 ![Project Logo](assets/GitHub_Logo.png)
 
 <div align="center">
-  <img src="assets/logo.png" alt="Project Logo" width="300" />
+  <img src="assets/GitHub_Logo.png" alt="Project Logo" width="300" />
 </div>
 
 
