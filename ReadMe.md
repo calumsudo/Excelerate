@@ -73,10 +73,10 @@ This document outlines the operational procedure for the 'Excelerate' applicatio
 - The workbook is saved with all updates applied.
 
 ### 10. Uploading the Updated Workbook
-- The updated workbook is uploaded back to Microsoft OneDrive using the Microsoft Graph API.
+- The updated workbook is uploaded back to _Microsoft OneDrive_ using the _Microsoft Graph API_.
 - Any changes are synchronized, and the backup copy is retained as per the set retention policy.
 
 ## Conclusion
-The 'Excelerate' application streamlines the process of updating financial data, ensuring that the information from various funders is consolidated efficiently and accurately into a central workbook. The process also includes robust error handling and reporting mechanisms to facilitate data integrity and accountability.
+The _Excelerate_ application streamlines the process of updating financial data, ensuring that the information from various funders is consolidated efficiently and accurately into a central workbook. The process also includes robust error handling and reporting mechanisms to facilitate data integrity and accountability.
 
 

@@ -229,11 +229,11 @@ class DashboardUI(ctk.CTkFrame):
         # create bhb file upload frame, entry and button
         self.bhb_upload_frame = ctk.CTkFrame(self)
         self.bhb_entry = ctk.CTkEntry(
-            self.bhb_upload_frame, width=600, placeholder_text="BHB XLSX File Path"
+            self.bhb_upload_frame, width=600, placeholder_text="BHB CSV File Path"
         )
         self.bhb_button = ctk.CTkButton(
             self.bhb_upload_frame,
-            text="Browse for BHB XLSX",
+            text="Browse for BHB CSV",
             command=lambda: self.browse_csv("BHB"),
             width=250,
         )
@@ -293,7 +293,7 @@ class DashboardUI(ctk.CTkFrame):
             self.bhb_entry,
             self.bhb_button,
             self.bhb_error_label,
-            "BHB XLSX File Path",
+            "BHB CSV File Path",
             3,
         )
         self.setup_file_upload_frame(
@@ -560,12 +560,12 @@ class DashboardUI(ctk.CTkFrame):
             ) = self.parse_and_handle_csv("BHB")
             if bhb_error:
                 self.bhb_error_label.configure(
-                    text=f"Error with {bhb_error} in BHB XLSX File. Ensure proper XLSX was uploaded.",
+                    text=f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.",
                     text_color="red",
                 )
                 errors.append(bhb_error)
                 log_to_file(
-                    f"Error with {bhb_error} in BHB XLSX File. Ensure proper XLSX was uploaded.",
+                    f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.",
                     self.output_dir_var.get(),
                     self.portfolio_var.get(),
                 )
