@@ -1,5 +1,4 @@
 # Excelerate - Process Flow Documentation
-![Project Logo](assets/GitHub_Logo.png)
 
 <div align="center">
   <img src="assets/GitHub_Logo.png" alt="Project Logo" width="300" />
@@ -14,12 +13,16 @@ This document outlines the operational procedure for the 'Excelerate' applicatio
 ### 1. Launching the Application
 - The user starts the 'Excelerate' application.
 - A user interface (UI) loads, presenting an authentication button.
-- ![Authentication Screen](assets/Excelerate_Authentication.png)
+<div align="center">
+  <img src="assets/Excelerate_Authentication.png" alt="Project Logo" width="300" />
+</div>
 
 ### 2. Authentication
 - The user clicks the authentication button to begin the process.
 - Once authentication is successful, the UI updates to display a new window.
-- ![Microsoft Authentication](assets/Microsoft_Authentication.png)
+<div align="center">
+  <img src="assets/Microsoft_Authentication.png" alt="Project Logo" width="300" />
+</div>
 
 ### 3. Workbook Selection
 - In the updated UI, the user is prompted to select a workbook from a list.
