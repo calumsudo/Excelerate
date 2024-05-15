@@ -2,7 +2,6 @@ import pandas as pd
 from datetime import datetime
 import os
 
-
 def validate_csv_columns(df, required_columns):
     missing_columns = [
         column for column in required_columns if column not in df.columns
