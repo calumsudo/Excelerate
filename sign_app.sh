@@ -82,7 +82,6 @@
 
 
 #!/bin/bash
-
 # Step 1: Create and activate a virtual environment
 python3 -m venv env
 source env/bin/activate

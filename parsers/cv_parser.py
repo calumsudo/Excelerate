@@ -2,20 +2,19 @@ import pandas as pd
 from datetime import datetime
 import os
 
-
 def validate_csv_files(file_paths, required_columns):
-    if len(file_paths) != 5:
-        raise ValueError("There should be exactly 5 CSV files.")
     if len(file_paths) != len(set(file_paths)):
-        raise ValueError("You must upload 5 unique files.")
+        raise ValueError("You must upload unique files.")
     for file in file_paths:
         df = pd.read_csv(file)
+        df_columns = [col.strip() for col in df.columns]
+        print(f"Columns in {file}: {df_columns}")  # Debugging statement
         missing_columns = [
-            column for column in required_columns if column not in df.columns
+            column for column in required_columns if column not in df_columns
         ]
+        print(f"Missing columns in {file}: {missing_columns}")  # Debugging statement
         if missing_columns:
-            raise ValueError(f"Incorrect file format(s) for the following {file}")
-
+            raise ValueError(f"Incorrect file format(s) for the following {file}: missing columns {missing_columns}")
 
 def parse_cv(file_paths, output_path, portfolio_name):
     try:
@@ -23,7 +22,6 @@ def parse_cv(file_paths, output_path, portfolio_name):
             "Last Merchant Cleared Date",
             "Advance Status",
             "AdvanceID",
-            "Merchant Name",
             "Frequency",
             "Repayment Type",
             "Draft Amount",
@@ -40,6 +38,13 @@ def parse_cv(file_paths, output_path, portfolio_name):
         validate_csv_files(file_paths, required_columns)
 
         dfs = [pd.read_csv(file, dtype={"AdvanceID": str}) for file in file_paths]
+        
+        # Add Merchant Name column with 'NA' if missing and replace it with AdvanceID
+        for df in dfs:
+            if "Merchant Name" not in df.columns:
+                df["Merchant Name"] = "NA"
+            df["Merchant Name"] = df["AdvanceID"]
+
         combined_df = pd.concat(dfs, ignore_index=True)
 
         currency_columns = ["Syn Net Amount", "Syn Gross Amount"]
@@ -57,7 +62,7 @@ def parse_cv(file_paths, output_path, portfolio_name):
             & (combined_df["Syn Net Amount"] != 0)
         ]
 
-        # Group by 'Funder Advance ID' and 'Merchant Name'
+        # Group by 'AdvanceID' and 'Merchant Name'
         aggregated_df = (
             combined_df.groupby(["AdvanceID", "Merchant Name"], as_index=False)
             .agg({"Syn Gross Amount": "sum", "Syn Net Amount": "sum"})

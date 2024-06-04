@@ -593,18 +593,7 @@ class DashboardUI(ctk.CTkFrame):
 
         # Process CV CSV
         if self.csv_paths["CV"]:
-            # Check if there are exactly 5 CSV files, raise the error if not
-            if len(self.csv_paths["CV"]) != 5:
-                clearview_length_error = "There should be exactly 5 CSV files for CV."
-                self.clearview_error_label.configure(
-                    text=clearview_length_error, text_color="red"
-                )
-                errors.append(clearview_length_error)
-                log_to_file(
-                    clearview_length_error,
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
+            # Check for duplicate files
             if len(self.csv_paths["CV"]) != len(set(self.csv_paths["CV"])):
                 clearview_dup_error = "Duplicate files detected for CV."
                 self.clearview_error_label.configure(

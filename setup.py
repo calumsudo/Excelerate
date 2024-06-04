@@ -1,3 +1,4 @@
+
 from setuptools import setup, find_packages
 import os
 
@@ -17,6 +18,7 @@ OPTIONS = {
         'CFBundleIdentifier': 'calumsiemer.dev.excelerate',
         'CFBundleVersion': '0.1.0',
         'CFBundleShortVersionString': '0.1.0',
+        'NSHumanReadableCopyright': u"Copyright © 2024, Calum Siemer, All Rights Reserved"
     },
 }
 
