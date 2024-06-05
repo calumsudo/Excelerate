@@ -10,7 +10,7 @@ includes = ['Babel', 'pillow', 'charset_normalizer'] + [pkg.split('==')[0] for p
 
 # PyInstaller options
 OPTIONS = {
-    'icon': 'assets/logo.ico',  # Use a .ico file for Windows
+    'icon': 'assets/icon.ico',  # Use a .ico file for Windows
     'includes': includes,
     'excludes': ['PyInstaller'],
 }
