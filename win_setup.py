@@ -35,6 +35,7 @@ class BuildExeCommand(Command):
             '--windowed',  # Use this for GUI applications
             '--icon=' + OPTIONS['icon'],
             '--name=Excelerate',
+            '--add-data=ui/ExcelerateLogo.png;ui',
             entry_point,
         ] + ['--hidden-import=' + inc for inc in OPTIONS['includes']]
         )
