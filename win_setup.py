@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup, find_packages, Command
 import os
 
 # Read requirements from the requirements.txt file
@@ -19,7 +19,7 @@ OPTIONS = {
 entry_point = 'main.py'  # Ensure this is the correct entry point script
 
 # Create a command class to integrate PyInstaller with setuptools
-class BuildExeCommand(setuptools.Command):
+class BuildExeCommand(Command):
     user_options = []
 
     def initialize_options(self):
