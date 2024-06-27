@@ -63,6 +63,7 @@ class App(ctk.CTk):
 
                 # The rest of your code to handle the workbook...
             except Exception as e:
+                print(f"Error downloading workbook: {str(e)}")
                 self.dashboard_ui.handle_errors(str(e))
         else:
             log_to_file("Access token is not available.", output_path, portfolio_name)
@@ -139,6 +140,7 @@ class App(ctk.CTk):
                             updated_content, detailed_unmatched_info
                         )
                     except Exception as e:
+                        print(f"Error processing {sheet_name} data: {str(e)}")
                         self.dashboard_ui.handle_errors(str(e))
                 else:
                     log_to_file(

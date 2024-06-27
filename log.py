@@ -8,11 +8,17 @@ def log_to_file(message, output_path, portfolio_name):
     elif portfolio_name == 2:
         portfolio_name = "White Rabbit"
 
-    today_date = datetime.now().strftime("%m_%d_%Y")
-    directory = os.path.expanduser(f"{output_path}/{portfolio_name}/{today_date}")
-    os.makedirs(directory, exist_ok=True)
+    try:
 
-    with open(
-        f"{output_path}/{portfolio_name}/{today_date}/log_{today_date}.txt", "a"
-    ) as file:
-        file.write(f"{message}\n")
+        today_date = datetime.now().strftime("%m_%d_%Y")
+        directory = os.path.expanduser(f"{output_path}/{portfolio_name}/{today_date}")
+        os.makedirs(directory, exist_ok=True)
+
+        with open(
+            f"{output_path}/{portfolio_name}/{today_date}/log_{today_date}.txt", "a"
+        ) as file:
+            file.write(f"{message}\n")
+
+    except Exception as e:
+        print(f"Error in logging: {str(e)}")
+        raise
