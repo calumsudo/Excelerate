@@ -123,4 +123,5 @@ def parse_cv(file_paths, output_path, portfolio_name):
         )
 
     except Exception as e:
+        print(f"Error in ClearView parser: {e}")
         return None, None, None, None, str(e)

@@ -125,4 +125,5 @@ def parse_acs(csv_file, output_path, portfolio_name):
         return latest_week_df, total_gross_payment, total_net, total_fees, None
 
     except Exception as e:
+        print(f"Error in ACS parser: {e}")
         return None, None, None, None, str(e)

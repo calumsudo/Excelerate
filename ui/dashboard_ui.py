@@ -737,6 +737,7 @@ class DashboardUI(ctk.CTkFrame):
             error_message = (
                 f"An error occurred while processing the {section} CSV: {str(e)}"
             )
+            print(f"Error in Parse and Handle CSV: {error_message}")
             log_to_file(
                 error_message, self.output_dir_var.get(), self.portfolio_var.get()
             )

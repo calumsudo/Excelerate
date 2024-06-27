@@ -212,5 +212,6 @@ def parse_bhb(file_path, output_path, portfolio_name):
         return pivot_table, total_gross_amount, total_net_amount, total_fee, None
 
     except Exception as e:
+        print(f"Error in BHB parser: {e}")
         return None, None, None, None, str(e)
 
