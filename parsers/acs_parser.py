@@ -127,7 +127,6 @@
 #     except Exception as e:
 #         return None, None, None, None, str(e)
 
-
 import pandas as pd
 from datetime import datetime
 import os
@@ -172,19 +171,19 @@ def parse_acs(csv_file, output_path, portfolio_name):
         latest_week_df = latest_week_df.fillna(0.00)
         latest_week_df["Sum of Syn Gross Amount"] = (
             latest_week_df["Sum of Syn Gross Amount"]
-            .replace("[\$,]", "", regex=True)
+            .replace(r"[\$,]", "", regex=True)
             .astype(float)
             .round(2)
         )
         latest_week_df["Sum of Syn Net Amount"] = (
             latest_week_df["Sum of Syn Net Amount"]
-            .replace("[\$,]", "", regex=True)
+            .replace(r"[\$,]", "", regex=True)
             .astype(float)
             .round(2)
         )
         latest_week_df["Total Servicing Fee"] = (
             latest_week_df["Total Servicing Fee"]
-            .replace("[\$,]", "", regex=True)
+            .replace(r"[\$,]", "", regex=True)
             .astype(float)
             .abs()
             .round(2)
@@ -249,4 +248,3 @@ def parse_acs(csv_file, output_path, portfolio_name):
 
     except Exception as e:
         return None, None, None, None, str(e)
-
