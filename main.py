@@ -150,45 +150,31 @@ class App(ctk.CTk):
     #                 )
 
     def handle_data_processed(self, data):
-        # List of sheets to try
         sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
-        log_to_file(
-            "Data processed: " + str(data), self.output_path, self.portfolio_name
-        )
+        log_to_file("Data processed: " + str(data), self.output_path, self.portfolio_name)
         print(f"Data processed: {data}")  # Debugging statement
 
         for sheet_name in sheet_names:
             if sheet_name in data:
                 sheet_data = data[sheet_name]
-
                 pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
-                log_to_file(
-                    f"Processing {sheet_name} data...",
-                    self.output_path,
-                    self.portfolio_name,
-                )
+                
+                log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
                 print(f"Processing {sheet_name} data...")  # Debugging statement
+                
+                # Ensure that all amounts are converted to string
+                total_gross_amount_str = str(total_gross_amount)
+                total_net_amount_str = str(total_net_amount)
+                total_fee_str = str(total_fee)
 
-                log_to_file(
-                    f"Total Gross Amount in {sheet_name}: {total_gross_amount}",
-                    self.output_path,
-                    self.portfolio_name,
-                )
-                print(f"Total Gross Amount in {sheet_name}: {total_gross_amount}")  # Debugging statement
+                log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}", self.output_path, self.portfolio_name)
+                print(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}")  # Debugging statement
 
-                log_to_file(
-                    f"Total Net Amount in {sheet_name}: {total_net_amount}",
-                    self.output_path,
-                    self.portfolio_name,
-                )
-                print(f"Total Net Amount in {sheet_name}: {total_net_amount}")  # Debugging statement
+                log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount_str}", self.output_path, self.portfolio_name)
+                print(f"Total Net Amount in {sheet_name}: {total_net_amount_str}")  # Debugging statement
 
-                log_to_file(
-                    f"Total Fee in {sheet_name}: {total_fee}",
-                    self.output_path,
-                    self.portfolio_name,
-                )
-                print(f"Total Fee in {sheet_name}: {total_fee}")  # Debugging statement
+                log_to_file(f"Total Fee in {sheet_name}: {total_fee_str}", self.output_path, self.portfolio_name)
+                print(f"Total Fee in {sheet_name}: {total_fee_str}")  # Debugging statement
 
                 if not error:
                     try:
@@ -200,11 +186,7 @@ class App(ctk.CTk):
                             self.portfolio_name,
                             self.selected_date,
                         )
-                        log_to_file(
-                            f"Data added to sheet '{sheet_name}'.",
-                            self.output_path,
-                            self.portfolio_name,
-                        )
+                        log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path, self.portfolio_name)
                         print(f"Data added to sheet '{sheet_name}'.")  # Debugging statement
 
                         updated_content = update_workbook(
@@ -214,18 +196,12 @@ class App(ctk.CTk):
                             self.output_path,
                             self.portfolio_name,
                         )
-                        self.dashboard_ui.handle_update_response(
-                            updated_content, detailed_unmatched_info
-                        )
+                        self.dashboard_ui.handle_update_response(updated_content, detailed_unmatched_info)
                     except Exception as e:
                         print(f"Error processing {sheet_name} data: {str(e)}")
                         self.dashboard_ui.handle_errors(str(e))
                 else:
-                    log_to_file(
-                        f"Error processing {sheet_name} data: {error}",
-                        self.output_path,
-                        self.portfolio_name,
-                    )
+                    log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
                     print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
 
 
