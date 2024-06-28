@@ -507,240 +507,70 @@ class DashboardUI(ctk.CTkFrame):
         self.acs_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
 
-        # Process Kings CSV
-        if self.csv_paths["Kings"]:
-            (
-                kings_pivot_table,
-                kings_total_gross_amount,
-                kings_total_net_amount,
-                kings_total_fee,
-                kings_error,
-            ) = self.parse_and_handle_csv("Kings")
-            if kings_error:
-                self.kings_error_label.configure(
-                    text=f"Error with {kings_error} in Kings CSV File. Ensure proper CSV was uploaded.",
-                    text_color="red",
-                )
-                errors.append(kings_error)
-                log_to_file(
-                    f"Error with {kings_error} in Kings CSV File. Ensure proper CSV was uploaded.",
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
-
-        # Process Boom CSV
-        if self.csv_paths["Boom"]:
-            (
-                boom_pivot_table,
-                boom_total_gross_amount,
-                boom_total_net_amount,
-                boom_total_fee,
-                boom_error,
-            ) = self.parse_and_handle_csv("Boom")
-            if boom_error:
-                self.boom_error_label.configure(
-                    text=f"Error with {boom_error} in Boom CSV File. Ensure proper CSV was uploaded.",
-                    text_color="red",
-                )
-                errors.append(boom_error)
-                log_to_file(
-                    f"Error with {boom_error} in Boom CSV File. Ensure proper CSV was uploaded.",
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
-
-        # Process BHB CSV
-        if self.csv_paths["BHB"]:
-            (
-                bhb_pivot_table,
-                bhb_total_gross_amount,
-                bhb_total_net_amount,
-                bhb_total_fee,
-                bhb_error,
-            ) = self.parse_and_handle_csv("BHB")
-            if bhb_error:
-                self.bhb_error_label.configure(
-                    text=f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.",
-                    text_color="red",
-                )
-                errors.append(bhb_error)
-                log_to_file(
-                    f"Error with {bhb_error} in BHB CSV File. Ensure proper CSV was uploaded.",
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
-
-        # Process ACS CSV
-        if self.csv_paths["ACS"]:
-            (
-                acs_pivot_table,
-                acs_total_gross_amount,
-                acs_total_net_amount,
-                acs_total_fee,
-                acs_error,
-            ) = self.parse_and_handle_csv("ACS")
-            if acs_error:
-                self.acs_error_label.configure(
-                    text=f"Error with {acs_error}. Ensure proper CSV was uploaded.",
-                    text_color="red",
-                )
-                errors.append(acs_error)
-                log_to_file(
-                    f"Error with {acs_error}. Ensure proper CSV was uploaded.",
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
-
-        # Process CV CSV
-        if self.csv_paths["CV"]:
-            # Check for duplicate files
-            if len(self.csv_paths["CV"]) != len(set(self.csv_paths["CV"])):
-                clearview_dup_error = "Duplicate files detected for CV."
-                self.clearview_error_label.configure(
-                    text=clearview_dup_error, text_color="red"
-                )
-                errors.append(clearview_dup_error)
-                log_to_file(
-                    clearview_dup_error,
-                    self.output_dir_var.get(),
-                    self.portfolio_var.get(),
-                )
-            else:
-                # Process each CV CSV file
+        # Process each section
+        sections = ["Kings", "Boom", "BHB", "ACS", "CV"]
+        processed_data = {}
+        for section in sections:
+            if section == "CV" and self.csv_paths["CV"]:
                 for csv_path in self.csv_paths["CV"]:
-                    (
-                        clearview_pivot_table,
-                        clearview_total_gross_amount,
-                        clearview_total_net_amount,
-                        clearview_total_fee,
-                        clearview_error,
-                    ) = self.parse_and_handle_csv("CV", csv_path)
-                    if clearview_error:
-                        errors.append(clearview_error)
-                        log_to_file(
-                            f"Error with {clearview_error}. Ensure proper CSV was uploaded.",
-                            self.output_dir_var.get(),
-                            self.portfolio_var.get(),
-                        )
-
-                # If there are errors specific to CV, display them
-                if errors:
-                    clearview_error_message = " | ".join(errors)
-                    truncated_error_message = (
-                        (clearview_error_message[:47] + "...")
-                        if len(clearview_error_message) > 50
-                        else clearview_error_message
-                    )
-                    self.clearview_error_label.configure(
-                        text=f"Errors with CV files: {truncated_error_message}",
-                        text_color="red",
-                    )
-                    log_to_file(
-                        f"Errors with CV files: {clearview_error_message}",
-                        self.output_dir_var.get(),
-                        self.portfolio_var.get(),
-                    )
+                    result = self.parse_and_handle_csv(section, csv_path)
+                    if result[-1]:
+                        errors.append(result[-1])
+                    processed_data[section] = result
+            elif self.csv_paths[section]:
+                result = self.parse_and_handle_csv(section)
+                if result[-1]:
+                    errors.append(result[-1])
+                processed_data[section] = result
 
         if not errors:
-            log_to_file(
-                "All CSV files processed successfully.",
-                self.output_dir_var.get(),
-                self.portfolio_var.get(),
-            )
+            output_path = self.output_dir_var.get()
+            portfolio_name = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+            selected_date = self.selected_date
+
             self.data_processed_callback(
-                {
-                    "Kings": (
-                        kings_pivot_table,
-                        kings_total_gross_amount,
-                        kings_total_net_amount,
-                        kings_total_fee,
-                        kings_error if kings_error else None,
-                    ),
-                    "Boom": (
-                        boom_pivot_table,
-                        boom_total_gross_amount,
-                        boom_total_net_amount,
-                        boom_total_fee,
-                        kings_error if kings_error else None,
-                    ),
-                    "BHB": (
-                        bhb_pivot_table,
-                        bhb_total_gross_amount,
-                        bhb_total_net_amount,
-                        bhb_total_fee,
-                        kings_error if kings_error else None,
-                    ),
-                    "ACS": (
-                        acs_pivot_table,
-                        acs_total_gross_amount,
-                        acs_total_net_amount,
-                        acs_total_fee,
-                        kings_error if kings_error else None,
-                    ),
-                    "CV": (
-                        clearview_pivot_table,
-                        clearview_total_gross_amount,
-                        clearview_total_net_amount,
-                        clearview_total_fee,
-                        kings_error if kings_error else None,
-                    ),
-                }
-            )
-            generate_report(
-                kings_pivot_table,
-                kings_total_gross_amount,
-                kings_total_net_amount,
-                kings_total_fee,
-                boom_pivot_table,
-                boom_total_gross_amount,
-                boom_total_net_amount,
-                boom_total_fee,
-                bhb_pivot_table,
-                bhb_total_gross_amount,
-                bhb_total_net_amount,
-                bhb_total_fee,
-                clearview_pivot_table,
-                clearview_total_gross_amount,
-                clearview_total_net_amount,
-                clearview_total_fee,
-                acs_pivot_table,
-                acs_total_gross_amount,
-                acs_total_net_amount,
-                acs_total_fee,
-                self.selected_file,
-                self.output_dir_var.get(),
-                self.portfolio_var.get(),
-                self.unmatched_rows,
+                processed_data,
+                output_path,
+                portfolio_name,
+                selected_date
             )
 
-    def parse_and_handle_csv(self, section, csv_path=None):
-        if self.portfolio_var.get() == 1:
-            self.portfolio = "Alder"
+            # Assuming all pivot tables and totals are in processed_data
+            generate_report(
+                processed_data["Kings"][0], processed_data["Kings"][1], processed_data["Kings"][2], processed_data["Kings"][3],
+                processed_data["Boom"][0], processed_data["Boom"][1], processed_data["Boom"][2], processed_data["Boom"][3],
+                processed_data["BHB"][0], processed_data["BHB"][1], processed_data["BHB"][2], processed_data["BHB"][3],
+                processed_data["CV"][0], processed_data["CV"][1], processed_data["CV"][2], processed_data["CV"][3],
+                processed_data["ACS"][0], processed_data["ACS"][1], processed_data["ACS"][2], processed_data["ACS"][3],
+                self.selected_file,
+                output_path,
+                portfolio_name,
+                self.unmatched_rows,
+            )
         else:
-            self.portfolio = "White Rabbit"
+            error_message = "Errors occurred: " + " | ".join(errors)
+            self.error_label.configure(text=error_message, text_color="red")
+            log_to_file(error_message, self.output_dir_var.get(), self.portfolio_var.get())
+
+    def parse_and_handle_csv(self, section, csv_path=None):
+        portfolio = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+        csv_path = csv_path or self.csv_paths[section]
         try:
-            csv_path = self.csv_paths[section]
             if section == "Kings":
-                return parse_kings(csv_path, self.output_dir_var.get(), self.portfolio)
+                return parse_kings(csv_path, self.output_dir_var.get(), portfolio)
             elif section == "Boom":
-                return parse_boom(csv_path, self.output_dir_var.get(), self.portfolio)
+                return parse_boom(csv_path, self.output_dir_var.get(), portfolio)
             elif section == "BHB":
-                return parse_bhb(csv_path, self.output_dir_var.get(), self.portfolio)
+                return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
             elif section == "ACS":
-                return parse_acs(csv_path, self.output_dir_var.get(), self.portfolio)
+                return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
             elif section == "CV":
-                return parse_cv(csv_path, self.output_dir_var.get(), self.portfolio)
+                return parse_cv(csv_path, self.output_dir_var.get(), portfolio)
             else:
                 return (None, None, None, None, f"Unrecognized section: {section}")
         except Exception as e:
-            # If any exception occurs, log it and return an error message with the exception detail.
-            error_message = (
-                f"An error occurred while processing the {section} CSV: {str(e)}"
-            )
-            print(f"Error in Parse and Handle CSV: {error_message}")
-            log_to_file(
-                error_message, self.output_dir_var.get(), self.portfolio_var.get()
-            )
+            error_message = f"An error occurred while processing the {section} CSV: {str(e)}"
+            log_to_file(error_message, self.output_dir_var.get(), portfolio)
             return (None, None, None, None, error_message)
 
     def handle_update_response(self, updated_content, detailed_unmatched_info):
