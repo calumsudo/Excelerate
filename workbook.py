@@ -10,6 +10,9 @@ from log import log_to_file
 
 
 def get_workbook_data(workbook_bytes, selected_file, output_path, portfolio_name):
+    if isinstance(workbook_bytes, list):
+        workbook_bytes = b"".join(workbook_bytes)
+    
     if portfolio_name == 1:
         portfolio_name = "Alder"
     elif portfolio_name == 2:
@@ -33,7 +36,6 @@ def get_workbook_data(workbook_bytes, selected_file, output_path, portfolio_name
         file.write(workbook_bytes)
 
     return workbook
-
 
 # Function to add a column if the current Friday's Net RTR column does not exist
 def add_net_rtr_column_if_needed(worksheet, selected_date=None, header_row=2):
@@ -218,10 +220,6 @@ def map_net_amount_to_excel(
 #     output_bytes.seek(0)
 #     final_bytes = output_bytes.getvalue()
 #     return final_bytes, detailed_unmatched_info
-
-
-from io import BytesIO
-import openpyxl
 
 def add_data_to_sheet(
     workbook, df, sheet_name, output_path, portfolio_name, selected_date=None

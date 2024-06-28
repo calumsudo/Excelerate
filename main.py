@@ -185,6 +185,9 @@ class App(ctk.CTk):
                             self.portfolio_name,
                             self.selected_date,
                         )
+                        if not final_bytes:
+                            raise ValueError("final_bytes is None or empty")
+                        
                         log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path, self.portfolio_name)
                         print(f"Data added to sheet '{sheet_name}'.")  # Debugging statement
 
@@ -203,6 +206,7 @@ class App(ctk.CTk):
                 else:
                     log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
                     print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
+
 
 if __name__ == "__main__":
     app = App()
