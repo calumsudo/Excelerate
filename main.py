@@ -80,68 +80,87 @@ class App(ctk.CTk):
         self.dashboard_ui.pack(pady=20)
 
 
-    def handle_data_processed(self, data):
-        sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
-        log_to_file("Data processed: " + str(data), self.output_path, self.portfolio_name)
-        print(f"Data processed: {data}")  # Debugging statement
+    # def handle_data_processed(self, data):
+    #     sheet_names = ["Kings", "Boom", "BHB", "ACS", "CV"]
+    #     log_to_file("Data processed: " + str(data), self.output_path, self.portfolio_name)
+    #     print(f"Data processed: {data}")  # Debugging statement
 
-        for sheet_name in sheet_names:
-            if sheet_name in data:
-                sheet_data = data[sheet_name]
-                pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
+    #     for sheet_name in sheet_names:
+    #         if sheet_name in data:
+    #             sheet_data = data[sheet_name]
+    #             pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
 
-                log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
-                print(f"Processing {sheet_name} data...")  # Debugging statement
+    #             log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
+    #             print(f"Processing {sheet_name} data...")  # Debugging statement
 
-                try:
-                    total_gross_amount_str = f"{total_gross_amount}"
-                    total_net_amount_str = f"{total_net_amount}"
-                    total_fee_str = f"{total_fee}"
+    #             try:
+    #                 total_gross_amount_str = f"{total_gross_amount}"
+    #                 total_net_amount_str = f"{total_net_amount}"
+    #                 total_fee_str = f"{total_fee}"
 
-                    log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}", self.output_path, self.portfolio_name)
-                    print(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}")  # Debugging statement
+    #                 log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}", self.output_path, self.portfolio_name)
+    #                 print(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}")  # Debugging statement
 
-                    log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount_str}", self.output_path, self.portfolio_name)
-                    print(f"Total Net Amount in {sheet_name}: {total_net_amount_str}")  # Debugging statement
+    #                 log_to_file(f"Total Net Amount in {sheet_name}: {total_net_amount_str}", self.output_path, self.portfolio_name)
+    #                 print(f"Total Net Amount in {sheet_name}: {total_net_amount_str}")  # Debugging statement
 
-                    log_to_file(f"Total Fee in {sheet_name}: {total_fee_str}", self.output_path, self.portfolio_name)
-                    print(f"Total Fee in {sheet_name}: {total_fee_str}")  # Debugging statement
+    #                 log_to_file(f"Total Fee in {sheet_name}: {total_fee_str}", self.output_path, self.portfolio_name)
+    #                 print(f"Total Fee in {sheet_name}: {total_fee_str}")  # Debugging statement
 
-                    if not error:
-                        try:
-                            final_bytes, detailed_unmatched_info = add_data_to_sheet(
-                                self.workbook,
-                                pivot_table,
-                                sheet_name,
-                                self.output_path,
-                                self.portfolio_name,
-                                self.selected_date,
-                            )
-                            if not final_bytes:
-                                raise ValueError("final_bytes is None or empty")
+    #                 if not error:
+    #                     try:
+    #                         final_bytes, detailed_unmatched_info = add_data_to_sheet(
+    #                             self.workbook,
+    #                             pivot_table,
+    #                             sheet_name,
+    #                             self.output_path,
+    #                             self.portfolio_name,
+    #                             self.selected_date,
+    #                         )
+    #                         if not final_bytes:
+    #                             raise ValueError("final_bytes is None or empty")
                             
-                            log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path, self.portfolio_name)
-                            print(f"Data added to sheet '{sheet_name}'.")  # Debugging statement
+    #                         log_to_file(f"Data added to sheet '{sheet_name}'.", self.output_path, self.portfolio_name)
+    #                         print(f"Data added to sheet '{sheet_name}'.")  # Debugging statement
 
-                            updated_content = update_workbook(
-                                self.access_token,
-                                self.selected_workbook[1],
-                                final_bytes,
-                                self.output_path,
-                                self.portfolio_name,
-                            )
-                            self.dashboard_ui.handle_update_response(updated_content, detailed_unmatched_info)
-                        except Exception as e:
-                            error_message = f"Error processing {sheet_name} data: {str(e)}"
-                            print(error_message)
-                            log_to_file(error_message, self.output_path, self.portfolio_name)
-                            self.dashboard_ui.handle_errors(str(e))
-                    else:
-                        log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
-                        print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
-                except Exception as e:
-                    log_to_file(f"Exception during logging or processing: {str(e)}", self.output_path, self.portfolio_name)
-                    print(f"Exception during logging or processing: {str(e)}")  # Debugging statement
+    #                         updated_content = update_workbook(
+    #                             self.access_token,
+    #                             self.selected_workbook[1],
+    #                             final_bytes,
+    #                             self.output_path,
+    #                             self.portfolio_name,
+    #                         )
+    #                         self.dashboard_ui.handle_update_response(updated_content, detailed_unmatched_info)
+    #                     except Exception as e:
+    #                         error_message = f"Error processing {sheet_name} data: {str(e)}"
+    #                         print(error_message)
+    #                         log_to_file(error_message, self.output_path, self.portfolio_name)
+    #                         self.dashboard_ui.handle_errors(str(e))
+    #                 else:
+    #                     log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
+    #                     print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
+    #             except Exception as e:
+    #                 log_to_file(f"Exception during logging or processing: {str(e)}", self.output_path, self.portfolio_name)
+    #                 print(f"Exception during logging or processing: {str(e)}")  # Debugging statement
+
+    def handle_data_processed(data, workbook, output_path, portfolio_name, selected_date):
+        for sheet_name, (df, total_gross, total_net, total_fee, detailed_unmatched_info) in data.items():
+            if df is None:
+                continue
+
+            print(f"Processing {sheet_name} data...")
+            print(f"Total Gross Amount in {sheet_name}: {total_gross}")
+            print(f"Total Net Amount in {sheet_name}: {total_net}")
+            print(f"Total Fee in {sheet_name}: {total_fee}")
+
+            final_bytes, unmatched_info = add_data_to_sheet(workbook, df, sheet_name, output_path, portfolio_name, selected_date)
+            if final_bytes:
+                print(f"Successfully processed {sheet_name} data.")
+            else:
+                print(f"Error processing {sheet_name} data: final_bytes is None or empty")
+
+        return workbook
+
 
 if __name__ == "__main__":
     app = App()
