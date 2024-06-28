@@ -573,6 +573,7 @@ class DashboardUI(ctk.CTkFrame):
             log_to_file(error_message, self.output_dir_var.get(), portfolio)
             return (None, None, None, None, error_message)
 
+
     def handle_update_response(self, updated_content, detailed_unmatched_info):
 
         self.unmatched_rows.extend(detailed_unmatched_info)
