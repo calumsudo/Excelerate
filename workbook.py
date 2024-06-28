@@ -374,18 +374,24 @@ def add_data_to_sheet(
         log_to_file(f"Adding data to sheet '{sheet_name}'...", output_path, portfolio_name)
         print(f"Adding data to sheet '{sheet_name}'...")  # Debugging statement
 
+        # Extract Advance IDs and Merchant Names from DataFrame
         df_advance_ids = (
             df[["Funder Advance ID", "Merchant Name"]]
             .dropna(subset=["Funder Advance ID"])
             .set_index("Funder Advance ID")
             .to_dict("index")
         )
+        print(f"df_advance_ids: {df_advance_ids}")  # Debugging statement
+
+        # Extract Advance IDs from Excel worksheet
         worksheet_advance_ids = {
             str(m[0]).strip(): m
             for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True)
             if m[0]
         }
+        print(f"worksheet_advance_ids: {worksheet_advance_ids}")  # Debugging statement
 
+        # Find unmatched Advance IDs and corresponding Merchant Names
         unmatched_advance_ids = set(df_advance_ids) - set(worksheet_advance_ids)
         unmatched_info = {
             aid: df_advance_ids[aid]["Merchant Name"]
@@ -393,6 +399,7 @@ def add_data_to_sheet(
             if aid != "All" and df_advance_ids[aid]["Merchant Name"] != "All"
         }
 
+        # Format unmatched info for logging
         formatted_unmatched_info = ", ".join(
             f"{aid}: {info}" for aid, info in unmatched_info.items()
         )
@@ -407,11 +414,14 @@ def add_data_to_sheet(
             portfolio_name,
         )
 
+        # Ensure the Net RTR column is added and get its column letter
         net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
         print(f"net_rtr_column: {net_rtr_column}")  # Debugging statement
 
+        # Updated to map using 'Advance ID'
         map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
 
+        # Save changes to the workbook
         output_bytes = BytesIO()
         workbook.save(output_bytes)
         output_bytes.seek(0)
@@ -422,6 +432,7 @@ def add_data_to_sheet(
 
         return final_bytes, detailed_unmatched_info
     except Exception as e:
-        print(f"Error in add_data_to_sheet: {str(e)}")
-        log_to_file(f"Error in add_data_to_sheet: {str(e)}", output_path, portfolio_name)
+        error_message = f"Error in add_data_to_sheet: {str(e)}"
+        print(error_message)
+        log_to_file(error_message, output_path, portfolio_name)
         return None, []
