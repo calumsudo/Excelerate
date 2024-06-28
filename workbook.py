@@ -160,61 +160,132 @@ def map_net_amount_to_excel(
             )
 
 
+# def add_data_to_sheet(
+#     workbook, df, sheet_name, output_path, portfolio_name, selected_date=None
+# ):
+
+#     # log_to_file(f"Advance IDs not found in Excel sheet: {unmatched_advance_ids}", output_path, portfolio_name)
+#     sheet = workbook[sheet_name]
+#     log_to_file(f"Adding data to sheet '{sheet_name}'...", output_path, portfolio_name)
+
+#     # Extract Advance IDs and Merchant Names from DataFrame
+#     df_advance_ids = (
+#         df[["Funder Advance ID", "Merchant Name"]]
+#         .dropna(subset=["Funder Advance ID"])
+#         .set_index("Funder Advance ID")
+#         .to_dict("index")
+#     )
+
+#     # Extract Advance IDs from Excel worksheet
+#     worksheet_advance_ids = {
+#         str(m[0]).strip(): m
+#         for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True)
+#         if m[0]
+#     }
+
+#     # Find unmatched Advance IDs and corresponding Merchant Names
+#     unmatched_advance_ids = set(df_advance_ids) - set(worksheet_advance_ids)
+#     unmatched_info = {
+#         aid: df_advance_ids[aid]["Merchant Name"]
+#         for aid in unmatched_advance_ids
+#         if aid != "All" and df_advance_ids[aid]["Merchant Name"] != "All"
+#     }
+
+#     # Format unmatched info for logging
+#     formatted_unmatched_info = ", ".join(
+#         f"{aid}: {info}" for aid, info in unmatched_info.items()
+#     )
+#     detailed_unmatched_info = [
+#         {"sheet_name": sheet_name, "advance_id": aid, "merchant_name": info}
+#         for aid, info in unmatched_info.items()
+#     ]
+
+#     log_to_file(
+#         f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}",
+#         output_path,
+#         portfolio_name,
+#     )
+
+#     # Ensure the Net RTR column is added and get its column letter
+#     net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
+
+#     # Updated to map using 'Advance ID'
+#     map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
+
+#     # Save changes to the workbook
+#     output_bytes = BytesIO()
+#     workbook.save(output_bytes)
+#     output_bytes.seek(0)
+#     final_bytes = output_bytes.getvalue()
+#     return final_bytes, detailed_unmatched_info
+
+
+from io import BytesIO
+import openpyxl
+
 def add_data_to_sheet(
     workbook, df, sheet_name, output_path, portfolio_name, selected_date=None
 ):
+    try:
+        sheet = workbook[sheet_name]
+        log_to_file(f"Adding data to sheet '{sheet_name}'...", output_path, portfolio_name)
+        print(f"Adding data to sheet '{sheet_name}'...")  # Debugging statement
 
-    # log_to_file(f"Advance IDs not found in Excel sheet: {unmatched_advance_ids}", output_path, portfolio_name)
-    sheet = workbook[sheet_name]
-    log_to_file(f"Adding data to sheet '{sheet_name}'...", output_path, portfolio_name)
+        # Extract Advance IDs and Merchant Names from DataFrame
+        df_advance_ids = (
+            df[["Funder Advance ID", "Merchant Name"]]
+            .dropna(subset=["Funder Advance ID"])
+            .set_index("Funder Advance ID")
+            .to_dict("index")
+        )
 
-    # Extract Advance IDs and Merchant Names from DataFrame
-    df_advance_ids = (
-        df[["Funder Advance ID", "Merchant Name"]]
-        .dropna(subset=["Funder Advance ID"])
-        .set_index("Funder Advance ID")
-        .to_dict("index")
-    )
+        # Extract Advance IDs from Excel worksheet
+        worksheet_advance_ids = {
+            str(m[0]).strip(): m
+            for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True)
+            if m[0]
+        }
 
-    # Extract Advance IDs from Excel worksheet
-    worksheet_advance_ids = {
-        str(m[0]).strip(): m
-        for m in sheet.iter_rows(min_col=4, max_col=5, values_only=True)
-        if m[0]
-    }
+        # Find unmatched Advance IDs and corresponding Merchant Names
+        unmatched_advance_ids = set(df_advance_ids) - set(worksheet_advance_ids)
+        unmatched_info = {
+            aid: df_advance_ids[aid]["Merchant Name"]
+            for aid in unmatched_advance_ids
+            if aid != "All" and df_advance_ids[aid]["Merchant Name"] != "All"
+        }
 
-    # Find unmatched Advance IDs and corresponding Merchant Names
-    unmatched_advance_ids = set(df_advance_ids) - set(worksheet_advance_ids)
-    unmatched_info = {
-        aid: df_advance_ids[aid]["Merchant Name"]
-        for aid in unmatched_advance_ids
-        if aid != "All" and df_advance_ids[aid]["Merchant Name"] != "All"
-    }
+        # Format unmatched info for logging
+        formatted_unmatched_info = ", ".join(
+            f"{aid}: {info}" for aid, info in unmatched_info.items()
+        )
+        detailed_unmatched_info = [
+            {"sheet_name": sheet_name, "advance_id": aid, "merchant_name": info}
+            for aid, info in unmatched_info.items()
+        ]
 
-    # Format unmatched info for logging
-    formatted_unmatched_info = ", ".join(
-        f"{aid}: {info}" for aid, info in unmatched_info.items()
-    )
-    detailed_unmatched_info = [
-        {"sheet_name": sheet_name, "advance_id": aid, "merchant_name": info}
-        for aid, info in unmatched_info.items()
-    ]
+        log_to_file(
+            f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}",
+            output_path,
+            portfolio_name,
+        )
+        print(f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}")  # Debugging statement
 
-    log_to_file(
-        f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}",
-        output_path,
-        portfolio_name,
-    )
+        # Ensure the Net RTR column is added and get its column letter
+        net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
+        print(f"Net RTR column added at {net_rtr_column}")  # Debugging statement
 
-    # Ensure the Net RTR column is added and get its column letter
-    net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
+        # Map Net Amount to Excel sheet
+        map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
+        print(f"Mapped Net Amount to Excel sheet")  # Debugging statement
 
-    # Updated to map using 'Advance ID'
-    map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
+        # Save changes to the workbook
+        output_bytes = BytesIO()
+        workbook.save(output_bytes)
+        output_bytes.seek(0)
+        final_bytes = output_bytes.getvalue()
+        return final_bytes, detailed_unmatched_info
 
-    # Save changes to the workbook
-    output_bytes = BytesIO()
-    workbook.save(output_bytes)
-    output_bytes.seek(0)
-    final_bytes = output_bytes.getvalue()
-    return final_bytes, detailed_unmatched_info
+    except Exception as e:
+        print(f"Error in add_data_to_sheet: {str(e)}")  # Error logging
+        log_to_file(f"Error in add_data_to_sheet: {str(e)}", output_path, portfolio_name)
+        return None, None

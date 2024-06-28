@@ -158,11 +158,10 @@ class App(ctk.CTk):
             if sheet_name in data:
                 sheet_data = data[sheet_name]
                 pivot_table, total_gross_amount, total_net_amount, total_fee, error = sheet_data
-                
+
                 log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
                 print(f"Processing {sheet_name} data...")  # Debugging statement
-                
-                # Ensure that all amounts are converted to string
+
                 total_gross_amount_str = str(total_gross_amount)
                 total_net_amount_str = str(total_net_amount)
                 total_fee_str = str(total_fee)
@@ -199,11 +198,11 @@ class App(ctk.CTk):
                         self.dashboard_ui.handle_update_response(updated_content, detailed_unmatched_info)
                     except Exception as e:
                         print(f"Error processing {sheet_name} data: {str(e)}")
+                        log_to_file(f"Error processing {sheet_name} data: {str(e)}", self.output_path, self.portfolio_name)
                         self.dashboard_ui.handle_errors(str(e))
                 else:
                     log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
                     print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
-
 
 if __name__ == "__main__":
     app = App()
