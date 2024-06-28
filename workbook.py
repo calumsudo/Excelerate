@@ -221,6 +221,10 @@ def map_net_amount_to_excel(
 #     final_bytes = output_bytes.getvalue()
 #     return final_bytes, detailed_unmatched_info
 
+from io import BytesIO
+from openpyxl.utils import get_column_letter
+from copy import copy
+
 def add_data_to_sheet(
     workbook, df, sheet_name, output_path, portfolio_name, selected_date=None
 ):
@@ -266,24 +270,25 @@ def add_data_to_sheet(
             output_path,
             portfolio_name,
         )
-        print(f"Advance IDs and Merchants not found in Excel sheet: {formatted_unmatched_info}")  # Debugging statement
 
         # Ensure the Net RTR column is added and get its column letter
         net_rtr_column = add_net_rtr_column_if_needed(sheet, selected_date)
-        print(f"Net RTR column added at {net_rtr_column}")  # Debugging statement
+        print(f"net_rtr_column: {net_rtr_column}")  # Debugging statement
 
-        # Map Net Amount to Excel sheet
+        # Updated to map using 'Advance ID'
         map_net_amount_to_excel(sheet, df, net_rtr_column, output_path, portfolio_name)
-        print(f"Mapped Net Amount to Excel sheet")  # Debugging statement
 
         # Save changes to the workbook
         output_bytes = BytesIO()
         workbook.save(output_bytes)
         output_bytes.seek(0)
         final_bytes = output_bytes.getvalue()
-        return final_bytes, detailed_unmatched_info
+        print(f"final_bytes length: {len(final_bytes)}")  # Debugging statement
+        if not final_bytes:
+            raise ValueError("final_bytes is None or empty")
 
+        return final_bytes, detailed_unmatched_info
     except Exception as e:
-        print(f"Error in add_data_to_sheet: {str(e)}")  # Error logging
+        print(f"Error in add_data_to_sheet: {str(e)}")
         log_to_file(f"Error in add_data_to_sheet: {str(e)}", output_path, portfolio_name)
-        return None, None
+        return None, []

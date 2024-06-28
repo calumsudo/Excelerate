@@ -207,7 +207,6 @@ class App(ctk.CTk):
                     log_to_file(f"Error processing {sheet_name} data: {error}", self.output_path, self.portfolio_name)
                     print(f"Error processing {sheet_name} data: {error}")  # Debugging statement
 
-
 if __name__ == "__main__":
     app = App()
     app.mainloop()
