@@ -162,9 +162,9 @@ class App(ctk.CTk):
                 log_to_file(f"Processing {sheet_name} data...", self.output_path, self.portfolio_name)
                 print(f"Processing {sheet_name} data...")  # Debugging statement
 
-                total_gross_amount_str = str(total_gross_amount)
-                total_net_amount_str = str(total_net_amount)
-                total_fee_str = str(total_fee)
+                total_gross_amount_str = f"{total_gross_amount}"
+                total_net_amount_str = f"{total_net_amount}"
+                total_fee_str = f"{total_fee}"
 
                 log_to_file(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}", self.output_path, self.portfolio_name)
                 print(f"Total Gross Amount in {sheet_name}: {total_gross_amount_str}")  # Debugging statement

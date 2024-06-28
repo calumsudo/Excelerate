@@ -223,7 +223,6 @@ def map_net_amount_to_excel(
 
 from io import BytesIO
 from openpyxl.utils import get_column_letter
-from copy import copy
 
 def add_data_to_sheet(
     workbook, df, sheet_name, output_path, portfolio_name, selected_date=None
