@@ -3,8 +3,8 @@ from datetime import datetime
 import os
 
 def validate_csv_files(file_paths, required_columns):
-    if len(file_paths) != len(set(file_paths)):
-        raise ValueError("You must upload unique files.")
+    # if len(file_paths) != len(set(file_paths)):
+    #     raise ValueError("You must upload unique files.")
     for file in file_paths:
         df = pd.read_csv(file)
         df_columns = [col.strip() for col in df.columns]
