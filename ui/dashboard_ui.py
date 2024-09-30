@@ -6,10 +6,12 @@ from parsers.kings_parser import parse_kings
 from parsers.boom_parser import parse_boom
 from parsers.bhb_parser import parse_bhb
 from parsers.acs_parser import parse_acs
+from parsers.vesper_parser import parse_VSPR
 from parsers.cv_parser import parse_cv
 from log import log_to_file
 from datetime import datetime
 from pdf_reporter import generate_report
+import os
 
 
 class DashboardUI(ctk.CTkFrame):
@@ -33,7 +35,8 @@ class DashboardUI(ctk.CTkFrame):
             "Boom": None,
             "BHB": None,
             "ACS": None,
-            "CV": [None] * 5,
+            "VSPR": None,
+            "CV": [],
         }
 
         # create sidebar frame with widgets
@@ -198,7 +201,9 @@ class DashboardUI(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=0)  # Boom row, doesn't need to expand
         self.grid_rowconfigure(3, weight=0)  # BHB row, doesn't need to expand
         self.grid_rowconfigure(4, weight=0)  # ACS row, doesn't need to expand
-        self.grid_rowconfigure(5, weight=0)  # CV row, should expand
+        self.grid_rowconfigure(5, weight=0)  # Vesper row, doesn't need to expand
+        self.grid_rowconfigure(6, weight=0)  # CV row, should expand
+
 
         # create kings file upload frame, entry, button, and error message
         self.kings_upload_frame = ctk.CTkFrame(self)
@@ -213,7 +218,7 @@ class DashboardUI(ctk.CTkFrame):
         )
         self.kings_error_label = ctk.CTkLabel(self.kings_upload_frame, text="")
 
-        # create boom file upload frame, entry and button
+        # create boom file upload frame, entry, button, and error message
         self.boom_upload_frame = ctk.CTkFrame(self)
         self.boom_entry = ctk.CTkEntry(
             self.boom_upload_frame, width=600, placeholder_text="Boom CSV File Path"
@@ -226,7 +231,7 @@ class DashboardUI(ctk.CTkFrame):
         )
         self.boom_error_label = ctk.CTkLabel(self.boom_upload_frame, text="")
 
-        # create bhb file upload frame, entry and button
+        # create bhb file upload frame, entry, button, and error message
         self.bhb_upload_frame = ctk.CTkFrame(self)
         self.bhb_entry = ctk.CTkEntry(
             self.bhb_upload_frame, width=600, placeholder_text="BHB CSV File Path"
@@ -239,7 +244,7 @@ class DashboardUI(ctk.CTkFrame):
         )
         self.bhb_error_label = ctk.CTkLabel(self.bhb_upload_frame, text="")
 
-        # create acs file upload frame, entry and button
+        # create acs file upload frame, entry, button, and error message
         self.acs_upload_frame = ctk.CTkFrame(self)
         self.acs_entry = ctk.CTkEntry(
             self.acs_upload_frame, width=600, placeholder_text="ACS CSV File Path"
@@ -252,14 +257,21 @@ class DashboardUI(ctk.CTkFrame):
         )
         self.acs_error_label = ctk.CTkLabel(self.acs_upload_frame, text="")
 
-        # create CV file upload frame, entry and button
-        self.clearview_upload_frame = ctk.CTkFrame(self)
-        self.clearview_button = ctk.CTkButton(
-            self.clearview_upload_frame,
-            text="Browse for CV CSV",
-            command=lambda: self.browse_csv("CV"),
+        # create vesper file upload frame, entry, button, and error message
+        self.VSPR_upload_frame = ctk.CTkFrame(self)
+        self.VSPR_entry = ctk.CTkEntry(
+            self.VSPR_upload_frame, width=600, placeholder_text="Vesper CSV File Path"
+        )
+        self.VSPR_button = ctk.CTkButton(
+            self.VSPR_upload_frame,
+            text="Browse for Vesper CSV",
+            command=lambda: self.browse_csv("VSPR"),
             width=250,
         )
+        self.VSPR_error_label = ctk.CTkLabel(self.VSPR_upload_frame, text="")
+
+        # create CV file upload frame, listbox, button, and error message
+        self.clearview_upload_frame = ctk.CTkFrame(self)
         self.clearview_listbox = tk.Listbox(
             self.clearview_upload_frame, width=50, height=5
         )  # Adjust the height as needed
@@ -305,12 +317,20 @@ class DashboardUI(ctk.CTkFrame):
             4,
         )
         self.setup_file_upload_frame(
+            self.VSPR_upload_frame,
+            self.VSPR_entry,
+            self.VSPR_button,
+            self.VSPR_error_label,
+            "Vesper CSV File Path",
+            5,  # Vesper is at row 5
+        )
+        self.setup_file_upload_frame(
             self.clearview_upload_frame,
             self.clearview_listbox,
             self.clearview_button,
             self.clearview_error_label,
             "CV CSV File Path",
-            5,
+            6,  # CV moves to row 6
         )
 
         self.process_button = ctk.CTkButton(
@@ -319,22 +339,23 @@ class DashboardUI(ctk.CTkFrame):
             command=self.process_all_csv_files,
         )
         self.process_button.grid(
-            row=6, column=1, columnspan=2, padx=10, pady=10, sticky="ew"
+            row=7, column=1, columnspan=2, padx=10, pady=10, sticky="ew"
         )
 
         # Error label for the entire frame
         self.error_label = ctk.CTkLabel(self, text="")
-        self.error_label.grid(row=7, column=1, columnspan=2, padx=10, pady=(0, 10))
+        self.error_label.grid(row=8, column=1, columnspan=2, padx=10, pady=(0, 10))
 
-        # disable all buttons until workbook is selected
+        # Disable all buttons until workbook is selected
         self.kings_button.configure(state="disabled")
         self.boom_button.configure(state="disabled")
         self.bhb_button.configure(state="disabled")
         self.acs_button.configure(state="disabled")
+        self.VSPR_button.configure(state="disabled")  # Added Vesper button
         self.clearview_button.configure(state="disabled")
         self.process_button.configure(state="disabled")
 
-    # Inside the DashboardUI class
+# Inside the DashboardUI class
 
     def check_output_directory(self, *args):
         directory = self.output_dir_var.get()
@@ -348,14 +369,14 @@ class DashboardUI(ctk.CTkFrame):
 
     def select_output_directory(self):
         directory = filedialog.askdirectory()
-        if (
-            directory
-        ):  # If a directory is selected, set it and enable the workbook dropdown
+        if directory:
+            # If a directory is selected, set it and enable the workbook dropdown
             self.output_dir_var.set(directory)
             self.alder_rhcm_button.configure(state="normal")
             self.white_rabbit_button.configure(state="normal")
             self.calendar.configure(state="normal")
-        else:  # No directory selected, ensure the workbook dropdown is disabled
+        else:
+            # No directory selected, ensure the workbook dropdown is disabled
             self.output_dir_var.set("")
             self.workbook_optionmenu.configure(state="disabled")
             self.fetch_workbook_button.configure(state="disabled")
@@ -373,15 +394,11 @@ class DashboardUI(ctk.CTkFrame):
 
     def setup_file_upload_frame(self, frame, widget, button, error, text, row):
         frame.grid(row=row, column=1, padx=10, pady=10, columnspan=2, sticky="nswe")
-        frame.grid_columnconfigure(
-            0, weight=1
-        )  # Make sure the entry/button expands to fill the frame
+        frame.grid_columnconfigure(0, weight=1)  # Make sure the entry/button expands to fill the frame
         if isinstance(widget, ctk.CTkEntry):
             widget.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         elif isinstance(widget, tk.Listbox):
-            widget.grid(
-                row=0, column=0, padx=10, pady=10, sticky="ew"
-            )  # Set sticky to "ew" to fill the width of the frame
+            widget.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         button.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         error.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10))
 
@@ -448,26 +465,75 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_button.configure(state="normal")
         self.bhb_button.configure(state="normal")
         self.acs_button.configure(state="normal")
+        self.VSPR_button.configure(state="normal")  # Added Vesper button
         self.clearview_button.configure(state="normal")
         self.process_button.configure(state="normal")
 
+    # def browse_csv(self, section):
+    #     if section == "CV":
+    #         # Use filedialog.askopenfilenames to allow selecting multiple files
+    #         file_paths = filedialog.askopenfilenames(
+    #             title=f"Select files for {section}"
+    #         )
+    #         if file_paths:
+    #             self.csv_paths[section] = file_paths
+    #             # Update the Listbox with selected file paths
+    #             self.clearview_listbox.delete(0, tk.END)
+    #             for path in file_paths:
+    #                 self.clearview_listbox.insert(tk.END, path)
+    #     else:
+    #         # This is for other sections where only one file is expected.
+    #         file_path = filedialog.askopenfilename(title=f"Select file for {section}")
+    #         if file_path:
+    #             if section == "Kings":
+    #                 self.csv_paths["Kings"] = file_path
+    #                 self.kings_entry.delete(0, "end")
+    #                 self.kings_entry.insert(0, file_path)
+    #             elif section == "Boom":
+    #                 self.csv_paths["Boom"] = file_path
+    #                 self.boom_entry.delete(0, "end")
+    #                 self.boom_entry.insert(0, file_path)
+    #             elif section == "BHB":
+    #                 self.csv_paths["BHB"] = file_path
+    #                 self.bhb_entry.delete(0, "end")
+    #                 self.bhb_entry.insert(0, file_path)
+    #             elif section == "ACS":
+    #                 self.csv_paths["ACS"] = file_path
+    #                 self.acs_entry.delete(0, "end")
+    #                 self.acs_entry.insert(0, file_path)
+    #             elif section == "Vesper":
+    #                 self.csv_paths["Vesper"] = file_path
+    #                 self.vesper_entry.delete(0, "end")
+    #                 self.vesper_entry.insert(0, file_path)
+    #             else:
+    #                 # Handle unrecognized section
+    #                 log_to_file(
+    #                     f"Unrecognized section: {section}",
+    #                     self.output_dir_var.get(),
+    #                     self.portfolio_var.get(),
+    #                 )
     def browse_csv(self, section):
         if section == "CV":
             # Use filedialog.askopenfilenames to allow selecting multiple files
             file_paths = filedialog.askopenfilenames(
-                title=f"Select files for {section}"
+                title=f"Select files for {section}",
+                filetypes=[("CSV files", "*.csv")],  # Limit to CSV files
             )
             if file_paths:
+                # Filter out any directories (shouldn't be necessary, but added for safety)
+                file_paths = [path for path in file_paths if os.path.isfile(path)]
                 self.csv_paths[section] = file_paths
-                # You might need to refresh a listbox or entries that show the selected file paths.
-                # For example, update a Listbox:
+                # Update the Listbox with selected file paths
                 self.clearview_listbox.delete(0, tk.END)
                 for path in file_paths:
                     self.clearview_listbox.insert(tk.END, path)
         else:
-            # This is for other sections where only one file is expected.
-            file_path = filedialog.askopenfilename(title=f"Select file for {section}")
-            if file_path:
+            # For other sections where only one file is expected.
+            file_path = filedialog.askopenfilename(
+                title=f"Select file for {section}",
+                filetypes=[("CSV files", "*.csv")],  # Limit to CSV files
+            )
+            if file_path and os.path.isfile(file_path):
                 if section == "Kings":
                     self.csv_paths["Kings"] = file_path
                     self.kings_entry.delete(0, "end")
@@ -484,10 +550,10 @@ class DashboardUI(ctk.CTkFrame):
                     self.csv_paths["ACS"] = file_path
                     self.acs_entry.delete(0, "end")
                     self.acs_entry.insert(0, file_path)
-                elif section == "CV":
-                    self.csv_paths["CV"] = file_path
-                    self.clearview_entry.delete(0, "end")
-                    self.clearview_entry.insert(0, file_path)
+                elif section == "VSPR":
+                    self.csv_paths["VSPR"] = file_path
+                    self.VSPR_entry.delete(0, "end")
+                    self.VSPR_entry.insert(0, file_path)
                 else:
                     # Handle unrecognized section
                     log_to_file(
@@ -495,8 +561,133 @@ class DashboardUI(ctk.CTkFrame):
                         self.output_dir_var.get(),
                         self.portfolio_var.get(),
                     )
-                    pass
 
+    # def process_all_csv_files(self):
+    #     errors = []
+
+    #     # Initialize the error labels to be empty initially
+    #     self.kings_error_label.configure(text="")
+    #     self.boom_error_label.configure(text="")
+    #     self.bhb_error_label.configure(text="")
+    #     self.acs_error_label.configure(text="")
+    #     self.vesper_error_label.configure(text="")  # Added Vesper error label
+    #     self.clearview_error_label.configure(text="")
+
+    #     # Process each section
+    #     sections = ["Kings", "Boom", "BHB", "ACS", "Vesper", "CV"]
+    #     processed_data = {}
+    #     for section in sections:
+    #         if section == "CV" and self.csv_paths["CV"]:
+    #             for csv_path in self.csv_paths["CV"]:
+    #                 result = self.parse_and_handle_csv(section, csv_path)
+    #                 if result[-1]:
+    #                     errors.append(result[-1])
+    #                 processed_data[section] = result
+    #         elif self.csv_paths.get(section):
+    #             result = self.parse_and_handle_csv(section)
+    #             if result[-1]:
+    #                 errors.append(result[-1])
+    #             processed_data[section] = result
+
+    #     if not errors:
+    #         output_path = self.output_dir_var.get()
+    #         portfolio_name = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+    #         selected_date = self.selected_date
+
+    #         self.data_processed_callback(
+    #             processed_data,
+    #             output_path,
+    #             portfolio_name,
+    #             selected_date
+    #         )
+
+    #         # Assuming all pivot tables and totals are in processed_data
+    #         generate_report(
+    #             processed_data["Kings"][0], processed_data["Kings"][1], processed_data["Kings"][2], processed_data["Kings"][3],
+    #             processed_data["Boom"][0], processed_data["Boom"][1], processed_data["Boom"][2], processed_data["Boom"][3],
+    #             processed_data["BHB"][0], processed_data["BHB"][1], processed_data["BHB"][2], processed_data["BHB"][3],
+    #             processed_data["CV"][0], processed_data["CV"][1], processed_data["CV"][2], processed_data["CV"][3],
+    #             processed_data["ACS"][0], processed_data["ACS"][1], processed_data["ACS"][2], processed_data["ACS"][3],
+    #             processed_data["Vesper"][0], processed_data["Vesper"][1], processed_data["Vesper"][2], processed_data["Vesper"][3],
+    #             self.selected_file,
+    #             output_path,
+    #             portfolio_name,
+    #             self.unmatched_rows,
+    #         )
+    #     else:
+    #         error_message = "Errors occurred: " + " | ".join(errors)
+    #         self.error_label.configure(text=error_message, text_color="red")
+    #         log_to_file(error_message, self.output_dir_var.get(), self.portfolio_var.get())
+
+    # def process_all_csv_files(self):
+    #     errors = []
+
+    #     # Initialize the error labels to be empty initially
+    #     self.kings_error_label.configure(text="")
+    #     self.boom_error_label.configure(text="")
+    #     self.bhb_error_label.configure(text="")
+    #     self.acs_error_label.configure(text="")
+    #     self.vesper_error_label.configure(text="")
+    #     self.clearview_error_label.configure(text="")
+
+    #     # Process each section
+    #     sections = ["Kings", "Boom", "BHB", "ACS", "Vesper", "CV"]
+    #     processed_data = {}
+    #     for section in sections:
+    #         if section == "CV" and self.csv_paths.get("CV"):
+    #             # Ensure all paths are valid files
+    #             file_paths = self.csv_paths["CV"]
+    #             valid_file_paths = [path for path in file_paths if os.path.isfile(path)]
+    #             if not valid_file_paths:
+    #                 errors.append(f"No valid files selected for {section}.")
+    #                 continue
+    #             self.csv_paths["CV"] = valid_file_paths
+    #             result = self.parse_and_handle_csv(section)
+    #             if result[-1]:
+    #                 errors.append(result[-1])
+    #             processed_data[section] = result
+    #         elif self.csv_paths.get(section):
+    #             if not os.path.isfile(self.csv_paths[section]):
+    #                 errors.append(f"Selected path '{self.csv_paths[section]}' is not a file.")
+    #                 continue
+    #             result = self.parse_and_handle_csv(section)
+    #             if result[-1]:
+    #                 errors.append(result[-1])
+    #             processed_data[section] = result
+
+    #     if errors:
+    #         error_message = "Errors occurred:\n" + "\n".join(errors)
+    #         self.error_label.configure(text=error_message, text_color="red")
+    #         log_to_file(error_message, self.output_dir_var.get(), self.portfolio_var.get())
+    #         return  # Stop processing further if there are errors
+
+    #     # Continue with the rest of your code...
+
+
+    #     output_path = self.output_dir_var.get()
+    #     portfolio_name = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+    #     selected_date = self.selected_date
+
+    #     self.data_processed_callback(
+    #         processed_data,
+    #         output_path,
+    #         portfolio_name,
+    #         selected_date
+    #     )
+
+    #     # Assuming all pivot tables and totals are in processed_data
+    #     generate_report(
+    #         processed_data["Kings"][0], processed_data["Kings"][1], processed_data["Kings"][2], processed_data["Kings"][3],
+    #         processed_data["Boom"][0], processed_data["Boom"][1], processed_data["Boom"][2], processed_data["Boom"][3],
+    #         processed_data["BHB"][0], processed_data["BHB"][1], processed_data["BHB"][2], processed_data["BHB"][3],
+    #         processed_data["CV"][0], processed_data["CV"][1], processed_data["CV"][2], processed_data["CV"][3],
+    #         processed_data["ACS"][0], processed_data["ACS"][1], processed_data["ACS"][2], processed_data["ACS"][3],
+    #         processed_data["Vesper"][0], processed_data["Vesper"][1], processed_data["Vesper"][2], processed_data["Vesper"][3],
+    #         self.selected_file,
+    #         output_path,
+    #         portfolio_name,
+    #         self.unmatched_rows,
+    #     )
     def process_all_csv_files(self):
         errors = []
 
@@ -505,19 +696,14 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_error_label.configure(text="")
         self.bhb_error_label.configure(text="")
         self.acs_error_label.configure(text="")
+        self.VSPR_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
 
         # Process each section
-        sections = ["Kings", "Boom", "BHB", "ACS", "CV"]
+        sections = ["Kings", "Boom", "BHB", "ACS", "VSPR", "CV"]
         processed_data = {}
         for section in sections:
-            if section == "CV" and self.csv_paths["CV"]:
-                for csv_path in self.csv_paths["CV"]:
-                    result = self.parse_and_handle_csv(section, csv_path)
-                    if result[-1]:
-                        errors.append(result[-1])
-                    processed_data[section] = result
-            elif self.csv_paths[section]:
+            if self.csv_paths.get(section):
                 result = self.parse_and_handle_csv(section)
                 if result[-1]:
                     errors.append(result[-1])
@@ -542,6 +728,7 @@ class DashboardUI(ctk.CTkFrame):
                 processed_data["BHB"][0], processed_data["BHB"][1], processed_data["BHB"][2], processed_data["BHB"][3],
                 processed_data["CV"][0], processed_data["CV"][1], processed_data["CV"][2], processed_data["CV"][3],
                 processed_data["ACS"][0], processed_data["ACS"][1], processed_data["ACS"][2], processed_data["ACS"][3],
+                processed_data["VSPR"][0], processed_data["VSPR"][1], processed_data["VSPR"][2], processed_data["VSPR"][3],
                 self.selected_file,
                 output_path,
                 portfolio_name,
@@ -552,26 +739,84 @@ class DashboardUI(ctk.CTkFrame):
             self.error_label.configure(text=error_message, text_color="red")
             log_to_file(error_message, self.output_dir_var.get(), self.portfolio_var.get())
 
-    def parse_and_handle_csv(self, section, csv_path=None):
+
+
+    # def parse_and_handle_csv(self, section, csv_path=None):
+    #     portfolio = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+    #     csv_path = csv_path or self.csv_paths[section]
+    #     try:
+    #         if section == "Kings":
+    #             return parse_kings(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "Boom":
+    #             return parse_boom(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "BHB":
+    #             return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "ACS":
+    #             return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "Vesper":
+    #             return parse_vesper(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "CV":
+    #             return parse_cv(csv_path, self.output_dir_var.get(), portfolio)
+    #         else:
+    #             return (None, None, None, None, f"Unrecognized section: {section}")
+    #     except Exception as e:
+    #         error_message = f"An error occurred while processing the {section} CSV: {str(e)}"
+    #         log_to_file(error_message, self.output_dir_var.get(), portfolio)
+    #         return (None, None, None, None, error_message)
+
+    # def parse_and_handle_csv(self, section):
+    #     portfolio = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
+    #     try:
+    #         if section == "Kings":
+    #             csv_path = self.csv_paths["Kings"]
+    #             return parse_kings(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "Boom":
+    #             csv_path = self.csv_paths["Boom"]
+    #             return parse_boom(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "BHB":
+    #             csv_path = self.csv_paths["BHB"]
+    #             return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "ACS":
+    #             csv_path = self.csv_paths["ACS"]
+    #             return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "Vesper":
+    #             csv_path = self.csv_paths["Vesper"]
+    #             return parse_vesper(csv_path, self.output_dir_var.get(), portfolio)
+    #         elif section == "CV":
+    #             csv_paths = self.csv_paths["CV"]
+    #             return parse_cv(csv_paths, self.output_dir_var.get(), portfolio)
+    #         else:
+    #             return (None, None, None, None, f"Unrecognized section: {section}")
+    #     except Exception as e:
+    #         error_message = f"An error occurred while processing the {section} CSV: {str(e)}"
+    #         log_to_file(error_message, self.output_dir_var.get(), portfolio)
+    #         return (None, None, None, None, error_message)
+
+    def parse_and_handle_csv(self, section):
         portfolio = "Alder" if self.portfolio_var.get() == 1 else "White Rabbit"
-        csv_path = csv_path or self.csv_paths[section]
         try:
-            if section == "Kings":
-                return parse_kings(csv_path, self.output_dir_var.get(), portfolio)
-            elif section == "Boom":
-                return parse_boom(csv_path, self.output_dir_var.get(), portfolio)
-            elif section == "BHB":
-                return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
-            elif section == "ACS":
-                return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
-            elif section == "CV":
-                return parse_cv(csv_path, self.output_dir_var.get(), portfolio)
+            if section == "CV":
+                csv_paths = self.csv_paths["CV"]
+                return parse_cv(csv_paths, self.output_dir_var.get(), portfolio)
             else:
-                return (None, None, None, None, f"Unrecognized section: {section}")
+                csv_path = self.csv_paths[section]
+                if section == "Kings":
+                    return parse_kings(csv_path, self.output_dir_var.get(), portfolio)
+                elif section == "Boom":
+                    return parse_boom(csv_path, self.output_dir_var.get(), portfolio)
+                elif section == "BHB":
+                    return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
+                elif section == "ACS":
+                    return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
+                elif section == "VSPR":
+                    return parse_VSPR(csv_path, self.output_dir_var.get(), portfolio)
+                else:
+                    return (None, None, None, None, f"Unrecognized section: {section}")
         except Exception as e:
             error_message = f"An error occurred while processing the {section} CSV: {str(e)}"
             log_to_file(error_message, self.output_dir_var.get(), portfolio)
             return (None, None, None, None, error_message)
+
 
 
     def handle_update_response(self, updated_content, detailed_unmatched_info):
@@ -600,6 +845,43 @@ class DashboardUI(ctk.CTkFrame):
             )
             # Add code to display error message or handle the failure scenario
 
+    # def reset_input_fields(self):
+    #     # Reset CSV file paths and clear the UI components for file paths
+    #     self.csv_paths = {
+    #         "Kings": None,
+    #         "Boom": None,
+    #         "BHB": None,
+    #         "ACS": None,
+    #         "Vesper": None,  # Added Vesper to csv_paths
+    #         "CV": [None] * 5,
+    #     }
+
+    #     # Clear entries
+    #     self.kings_entry.delete(0, "end")
+    #     self.boom_entry.delete(0, "end")
+    #     self.bhb_entry.delete(0, "end")
+    #     self.acs_entry.delete(0, "end")
+    #     self.vesper_entry.delete(0, "end")  # Clear Vesper entry
+    #     self.clearview_listbox.delete(0, tk.END)  # Assuming you're using a listbox for CV files
+
+    #     # Disable buttons to prevent actions without valid inputs
+    #     self.kings_button.configure(state="disabled")
+    #     self.boom_button.configure(state="disabled")
+    #     self.bhb_button.configure(state="disabled")
+    #     self.acs_button.configure(state="disabled")
+    #     self.vesper_button.configure(state="disabled")  # Disable Vesper button
+    #     self.clearview_button.configure(state="disabled")
+    #     self.process_button.configure(state="disabled")
+
+    #     # Clear error labels
+    #     self.kings_error_label.configure(text="")
+    #     self.boom_error_label.configure(text="")
+    #     self.bhb_error_label.configure(text="")
+    #     self.acs_error_label.configure(text="")
+    #     self.vesper_error_label.configure(text="")  # Clear Vesper error label
+    #     self.clearview_error_label.configure(text="")
+    #     self.error_label.configure(text="")
+
     def reset_input_fields(self):
         # Reset CSV file paths and clear the UI components for file paths
         self.csv_paths = {
@@ -607,7 +889,8 @@ class DashboardUI(ctk.CTkFrame):
             "Boom": None,
             "BHB": None,
             "ACS": None,
-            "CV": [None] * 5,
+            "VSPR": None,
+            "CV": [],
         }
 
         # Clear entries
@@ -615,23 +898,27 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_entry.delete(0, "end")
         self.bhb_entry.delete(0, "end")
         self.acs_entry.delete(0, "end")
-        self.clearview_listbox.delete(
-            0, tk.END
-        )  # Assuming you're using a listbox for CV files
+        self.VSPR_entry.delete(0, "end")
+        self.clearview_listbox.delete(0, tk.END)
 
         # Disable buttons to prevent actions without valid inputs
         self.kings_button.configure(state="disabled")
         self.boom_button.configure(state="disabled")
         self.bhb_button.configure(state="disabled")
         self.acs_button.configure(state="disabled")
+        self.VSPR_button.configure(state="disabled")
         self.clearview_button.configure(state="disabled")
         self.process_button.configure(state="disabled")
+
+        # Clear error labels
         self.kings_error_label.configure(text="")
         self.boom_error_label.configure(text="")
         self.bhb_error_label.configure(text="")
         self.acs_error_label.configure(text="")
+        self.VSPR_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
         self.error_label.configure(text="")
+
 
     def handle_errors(self, error_message):
         # Handle the error message

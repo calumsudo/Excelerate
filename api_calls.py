@@ -48,7 +48,7 @@ def download_excel_workbook(access_token, file_id, output_path, portfolio_name):
     return response.content
 
 
-def update_workbook(access_token, file_id, workbook_bytes, output_path, portfolio_name):
+def update_workbook(access_token, workbook_bytes, output_path, portfolio_name, file_id):
     if access_token is None:
         error_message = (
             "Unable to update workbook to Microsoft: Authentication required."

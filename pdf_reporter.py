@@ -75,6 +75,10 @@ def generate_report(
     acs_total_gross_amount,
     acs_total_net_amount,
     acs_total_fee,
+    VSPR_pivot_table,
+    VSPR_total_gross_amount,
+    VSPR_total_net_amount,
+    VSPR_total_fee,
     selected_file,
     directory,
     portfolio_name,
@@ -139,6 +143,7 @@ def generate_report(
         ("BHB", bhb_pivot_table),
         ("ClearView", cv_pivot_table),
         ("ACS", acs_pivot_table),
+        ("VSPR", VSPR_pivot_table),
     ]:
         elements.append(Paragraph(title, styleSheet["Heading2"]))
         if title == "ACS":
@@ -196,6 +201,22 @@ def generate_report(
             )
             elements.append(
                 Paragraph(f"Total Fee: {bhb_total_fee}", styleSheet["BodyText"])
+            )
+        elif title == "VSPR":
+            elements.append(
+                Paragraph(
+                    f"Total Gross Amount: {VSPR_total_gross_amount}",
+                    styleSheet["BodyText"],
+                )
+            )
+            elements.append(
+                Paragraph(
+                    f"Total Net Amount: {VSPR_total_net_amount}",
+                    styleSheet["BodyText"],
+                )
+            )
+            elements.append(
+                Paragraph(f"Total Fee: {VSPR_total_fee}", styleSheet["BodyText"])
             )
         elif title == "ClearView":
             elements.append(
