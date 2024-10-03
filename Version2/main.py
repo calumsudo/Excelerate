@@ -1,44 +1,104 @@
 import os
 import customtkinter as ctk
 from ui.authenticate_ui import AuthenticateUI
-from ui.dashboard_ui import DashboardUI  # Import the new DashboardUI class
+from ui.dashboard_ui import DashboardUI
+from ui.alder_ui import AlderPortfolioUI
+from ui.white_rabbit_ui import WhiteRabbitPortfolioUI
 import json
 from services.authentication_manager import AuthenticationManager
+import requests
 
 TOKEN_FILE = "access_token.json"
+CONFIG_FILE = "config.json"
 
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
-
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
-
         self.title("Excelerate")
-        self.geometry("1200x1000")
+        self.geometry("800x800")  # Increased size
+        print("App initialization started")
 
         # Variables to store authentication data
         self.access_token = None
-        self.user_name = None  # Initialize as None
-        self.data = None  # Add self.data for dashboard
+        self.user_name = None
+        self.data = None
 
         # Initialize the authentication manager
         self.auth_manager = AuthenticationManager()
+        print("AuthenticationManager initialized")
 
         # Try loading the access token on start
         self.load_access_token()
+        print(f"Access token loaded: {'Yes' if self.access_token else 'No'}")
 
-        if self.access_token and not self.auth_manager.is_token_expired():
-            # If we have a valid token, skip authentication
-            self.show_dashboard()
-        elif self.access_token and self.auth_manager.is_token_expired():
-            # If the token is expired, refresh it
-            self.auth_manager.refresh_access_token(self.authentication_callback)
-        else:
-            # If no token, show authentication UI
-            self.authenticate_ui = AuthenticateUI(self, self.authentication_callback)
-            self.authenticate_ui.pack(pady=20)
+        self.current_frame = None
+
+        try:
+            # Check internet connectivity
+            requests.get("https://www.google.com", timeout=5)
+            
+            if self.access_token:
+                print("Access token found, checking if expired")
+                if not self.auth_manager.is_token_expired():
+                    print("Token is valid, showing dashboard")
+                    self.show_dashboard()
+                else:
+                    print("Token is expired, refreshing")
+                    self.auth_manager.refresh_access_token(self.authentication_callback)
+            else:
+                print("No access token, showing authentication UI")
+                self.show_authentication()
+        except requests.exceptions.RequestException:
+            print("No internet connection")
+            self.show_error("No internet connection. Please check your network and try again.")
+
+        self.config = self.load_config()
+        print("App initialization completed")
+
+    def show_error(self, message):
+        if self.current_frame:
+            self.current_frame.destroy()
+        self.current_frame = ctk.CTkFrame(self)
+        self.current_frame.pack(pady=20, fill="both", expand=True)
+        
+        error_label = ctk.CTkLabel(self.current_frame, text=message, text_color="red", font=("Arial", 16))
+        error_label.pack(pady=20)
+        
+        retry_button = ctk.CTkButton(self.current_frame, text="Retry", command=self.retry_connection)
+        retry_button.pack(pady=10)
+
+    def retry_connection(self):
+        # Remove the current error frame
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        try:
+            # Check internet connectivity
+            requests.get("https://www.google.com", timeout=5)
+            
+            if self.access_token:
+                print("Access token found, checking if expired")
+                if not self.auth_manager.is_token_expired():
+                    print("Token is valid, showing dashboard")
+                    self.show_dashboard()
+                else:
+                    print("Token is expired, refreshing")
+                    self.auth_manager.refresh_access_token(self.authentication_callback)
+            else:
+                print("No access token, showing authentication UI")
+                self.show_authentication()
+        except requests.exceptions.RequestException:
+            print("No internet connection")
+            self.show_error("No internet connection. Please check your network and try again.")
+
+    def show_authentication(self):
+        if self.current_frame:
+            self.current_frame.destroy()
+        self.current_frame = AuthenticateUI(self, self.authentication_callback)
+        self.current_frame.pack(pady=20)
 
     def authentication_callback(self, success, response, access_token, refresh_token, token_expiry):
         if success:
@@ -55,18 +115,10 @@ class App(ctk.CTk):
             self.save_access_token()
 
             # Remove the authentication UI (if it exists) and show the dashboard
-            if hasattr(self, 'authenticate_ui'):
-                self.authenticate_ui.pack_forget()
             self.show_dashboard()
-
         else:
             # If authentication failed, show the authentication UI again
-            if hasattr(self, 'authenticate_ui'):
-                self.authenticate_ui.label.configure(text="Authentication failed. Please try again.")
-            else:
-                # If we're trying to refresh and it fails, bring back the authentication UI
-                self.authenticate_ui = AuthenticateUI(self, self.authentication_callback)
-                self.authenticate_ui.pack(pady=20)
+            self.show_authentication()
 
     def save_access_token(self):
         """Saves the access token and expiry to a file."""
@@ -84,23 +136,57 @@ class App(ctk.CTk):
     def load_access_token(self):
         """Loads the access token and expiry from a file if it exists."""
         if os.path.exists(TOKEN_FILE):
+            print(f"Token file found: {TOKEN_FILE}")
             with open(TOKEN_FILE, "r") as token_file:
                 token_data = json.load(token_file)
                 self.access_token = token_data.get("access_token")
-                self.user_name = token_data.get("user_name")  # Load user_name from file
+                self.user_name = token_data.get("user_name")
 
                 self.auth_manager.access_token = self.access_token
                 self.auth_manager.refresh_token = token_data.get("refresh_token")
                 self.auth_manager.token_expiry = token_data.get("token_expiry")
+            print(f"Access token loaded: {'Yes' if self.access_token else 'No'}")
+        else:
+            print(f"Token file not found: {TOKEN_FILE}")
 
     def show_dashboard(self):
         """Display the dashboard UI after successful authentication."""
+        if self.current_frame:
+            self.current_frame.destroy()
         if self.user_name:
-            self.dashboard_ui = DashboardUI(self, self.user_name, self.data)
-            self.dashboard_ui.pack(pady=20)
+            self.current_frame = DashboardUI(self, self.user_name, self.navigate_to_portfolio, self.save_output_directory)
+            self.current_frame.pack(pady=20, fill="both", expand=True)
         else:
             print("Error: User is not authenticated. Cannot show dashboard.")
 
+    def navigate_to_portfolio(self, portfolio, portfolio_dir, selected_date):
+        if self.current_frame:
+            self.current_frame.destroy()
+
+        if portfolio == "Alder":
+            self.current_frame = AlderPortfolioUI(self, portfolio_dir, selected_date, self.process_portfolio, self.show_dashboard)
+        elif portfolio == "White Rabbit":
+            self.current_frame = WhiteRabbitPortfolioUI(self, portfolio_dir, selected_date, self.process_portfolio, self.show_dashboard)
+        
+        self.current_frame.pack(fill="both", expand=True)
+
+    def save_output_directory(self, directory):
+        self.config['output_directory'] = directory
+        with open(CONFIG_FILE, 'w') as f:
+            json.dump(self.config, f)
+
+    def load_config(self):
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    def process_portfolio(self, csv_paths, output_dir):
+        # Implement your CSV processing logic here
+        print(f"Processing {len(csv_paths)} CSV files in {output_dir}")
+        # After processing, you might want to show a success message or return to the dashboard
+        self.show_dashboard()
 
 if __name__ == "__main__":
     app = App()
