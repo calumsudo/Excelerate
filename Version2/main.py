@@ -1,8 +1,10 @@
 import os
 import customtkinter as ctk
+from tkinterdnd2 import TkinterDnD
 from ui.authenticate_ui import AuthenticateUI
 from ui.dashboard_ui import DashboardUI
 from ui.alder_ui import AlderPortfolioUI
+from ui.alder_ui2 import AlderPortfolioUI2
 from ui.white_rabbit_ui import WhiteRabbitPortfolioUI
 import json
 from services.authentication_manager import AuthenticationManager
@@ -14,7 +16,7 @@ CONFIG_FILE = "config.json"
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
 
-class App(ctk.CTk):
+class App(TkinterDnD.Tk):
     def __init__(self):
         super().__init__()
         self.title("Excelerate")
@@ -154,21 +156,21 @@ class App(ctk.CTk):
         if self.current_frame:
             self.current_frame.destroy()
         if self.user_name:
-            self.current_frame = DashboardUI(self, self.user_name, self.navigate_to_portfolio, self.save_output_directory)
-            self.current_frame.pack(pady=20, fill="both", expand=True)
+            self.dashboard = DashboardUI(self, self.user_name, self.navigate, self.save_output_directory)
+            self.dashboard.pack(expand=True, fill="both")
         else:
             print("Error: User is not authenticated. Cannot show dashboard.")
 
-    def navigate_to_portfolio(self, portfolio, portfolio_dir, selected_date):
-        if self.current_frame:
-            self.current_frame.destroy()
-
+    def navigate(self, portfolio, output_dir, selected_date, dashboard_ui=None):
+        if self.dashboard:
+            self.dashboard.pack_forget()
         if portfolio == "Alder":
-            self.current_frame = AlderPortfolioUI(self, portfolio_dir, selected_date, self.process_portfolio, self.show_dashboard)
+            self.current_frame = AlderPortfolioUI2(self, output_dir, selected_date, self.process_portfolio, self.show_dashboard, dashboard_ui or self.dashboard)
+            self.current_frame.pack(expand=True, fill="both")
         elif portfolio == "White Rabbit":
-            self.current_frame = WhiteRabbitPortfolioUI(self, portfolio_dir, selected_date, self.process_portfolio, self.show_dashboard)
-        
-        self.current_frame.pack(fill="both", expand=True)
+            self.current_frame = WhiteRabbitPortfolioUI(self, output_dir, selected_date, self.process_portfolio, self.show_dashboard)
+            self.current_frame.pack(expand=True, fill="both")
+
 
     def save_output_directory(self, directory):
         self.config['output_directory'] = directory

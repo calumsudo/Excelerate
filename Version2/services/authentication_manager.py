@@ -54,6 +54,7 @@ class AuthenticationManager:
                     self.error_message = None
                     self.is_authenticated = True
                     print("Authentication successful")
+                    logging.debug("Authentication successful")
                     return True
                 else:
                     print("No internet connection detected")
