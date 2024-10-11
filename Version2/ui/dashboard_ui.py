@@ -5,6 +5,8 @@ import os
 import json
 from tkcalendar import Calendar
 from ml_models.funder_classifer import FunderClassifier
+import chardet
+import pandas as pd
 
 
 class DashboardUI(ctk.CTkFrame):
@@ -245,9 +247,71 @@ class DashboardUI(ctk.CTkFrame):
         submit_button = ctk.CTkButton(correction_popup, text="Submit", command=lambda: self.submit_correction(correction_popup, funder_var.get(), file_path), width=100)
         submit_button.pack(pady=10)
 
+    def read_file(self, file_path):
+        # First, try to detect the encoding
+        with open(file_path, 'rb') as file:
+            raw_data = file.read()
+            detected = chardet.detect(raw_data)
+            encoding = detected['encoding']
+
+        # Try to read with the detected encoding
+        try:
+            with open(file_path, 'r', encoding=encoding) as file:
+                return file.read()
+        except UnicodeDecodeError:
+            # If that fails, try common encodings
+            for enc in ['utf-8', 'iso-8859-1', 'windows-1252']:
+                try:
+                    with open(file_path, 'r', encoding=enc) as file:
+                        return file.read()
+                except UnicodeDecodeError:
+                    continue
+        
+        # If all attempts fail, raise an error
+        raise ValueError(f"Unable to read the file {file_path} with any known encoding")
+
     def submit_correction(self, popup, corrected_funder, file_path):
         popup.destroy()
-        # Here you can add logic to update your training data or log the correction
-        self.show_success_message(f"Correction submitted: {corrected_funder}")
+        
+        try:
+            # Read the CSV file as a string
+            csv_string = self.read_file(file_path)
+            
+            # Map 'Clear View' to 'CV' if necessary
+            if corrected_funder == "Clear View":
+                corrected_funder = "CV"
+            
+            # Ensure corrected_funder is one of the valid options
+            valid_funders = ["ACS", "BHB", "Boom", "Kings", "Vesper", "CV"]
+            if corrected_funder not in valid_funders:
+                self.show_error_message(f"Invalid funder: {corrected_funder}")
+                return
+            
+            # Prepare the new row data
+            new_row = {'csv_string': f'"""{csv_string}"""', 'funder': corrected_funder}
+            new_data = pd.DataFrame([new_row])
+            
+            self.show_success_message(f"Correction submitted: {corrected_funder}")
+
+            funder_classifier_data_path = 'ml_models/new_data.csv'
+
+            if os.path.exists(funder_classifier_data_path):
+                # If it exists, read the existing data
+                dataset = pd.read_csv(funder_classifier_data_path)
+            else:
+                # If it doesn't exist, create an empty DataFrame with the same columns
+                dataset = pd.DataFrame(columns=['csv_string', 'funder'])
+
+            # Append the new data to the existing dataset
+            dataset = pd.concat([dataset, new_data], ignore_index=True)
+
+            # Save the updated dataset
+            dataset.to_csv(funder_classifier_data_path, index=False)
+            
+        except Exception as e:
+            self.show_error_message(f"Error processing the file: {e}")
+            return
+
+
 
     # Add any additional methods you need for logging, error handling, etc.

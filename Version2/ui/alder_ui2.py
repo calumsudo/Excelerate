@@ -101,9 +101,17 @@ class AlderPortfolioUI2(ctk.CTkFrame):
 
     def process_file(self, file_path):
         print(f"Processing file: {file_path}")
-        predicted_funder, confidence = FunderClassifier(file_path)
-        print(f"Predicted Funder: {predicted_funder}, Confidence: {confidence:.2f}")
-        self.dashboard_ui.show_prediction_popup(predicted_funder, confidence, file_path)
+        try:
+            predicted_funder, confidence = FunderClassifier(file_path)
+            print(f"Predicted Funder: {predicted_funder}, Confidence: {confidence:.2f}")
+            if predicted_funder != "Unknown":
+                self.dashboard_ui.show_prediction_popup(predicted_funder, confidence, file_path)
+            else:
+                print("Unable to make a prediction. The file may be empty or contain no usable data.")
+                # You might want to show an error message to the user here
+        except Exception as e:
+            print(f"Error processing file: {e}")
+            # You might want to show an error message to the user here
 
     def process_files(self):
         if not self.csv_files:

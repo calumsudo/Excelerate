@@ -8,16 +8,36 @@ from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import LabelEncoder
 
 def FunderClassifier(funder_csv):
+    csv_file_path = 'ml_models/funder_classifier_data.csv'
 
-    dataset = pd.read_csv('ml_models/funder_classifier_data.csv')
+    if not os.path.exists(csv_file_path):
+        # Create the CSV file with initial columns if it doesn't exist
+        initial_data = pd.DataFrame(columns=['csv_string', 'funder'])
+        initial_data.to_csv(csv_file_path, index=False)
+        print(f"Created new file: {csv_file_path}")
+
+    dataset = pd.read_csv(csv_file_path)
+
+    if dataset.empty:
+        print("Dataset is empty. Unable to train the model.")
+        return "Unknown", 0.0
 
     # Prepare data for training
     X = dataset['csv_string']
     y = dataset['funder']
 
     # Convert text data into feature vectors using CountVectorizer
-    vectorizer = CountVectorizer()
-    X_vectorized = vectorizer.fit_transform(X)
+    vectorizer = CountVectorizer(stop_words=None, token_pattern=r'\b\w+\b')
+    try:
+        X_vectorized = vectorizer.fit_transform(X)
+    except ValueError as e:
+        print(f"Vectorization error: {e}")
+        print("Sample data:", X.head())
+        return "Unknown", 0.0
+
+    if X_vectorized.shape[1] == 0:
+        print("No features were extracted from the text. Check the data and preprocessing steps.")
+        return "Unknown", 0.0
 
     X_train, X_test, y_train, y_test = train_test_split(X_vectorized, y, test_size=0.2, random_state=42)
 
@@ -60,7 +80,11 @@ def FunderClassifier(funder_csv):
     csv_string = csv_to_string(funder_csv)
 
     # Vectorize the input CSV string
-    input_vectorized = vectorizer.transform([csv_string])
+    try:
+        input_vectorized = vectorizer.transform([csv_string])
+    except ValueError as e:
+        print(f"Error vectorizing input: {e}")
+        return "Unknown", 0.0
 
     # Make prediction
     predicted_funder = classifier.predict(input_vectorized)

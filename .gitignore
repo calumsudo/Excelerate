@@ -12,3 +12,7 @@ a.txt
 excelerates
 excelerate 
 
+*.csv
+*.ipynb
+*.json
+*.DS_Store
