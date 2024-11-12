@@ -3,7 +3,7 @@ import json
 import csv
 import sqlite3
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from pathlib import Path
 from typing import Dict, Any, Optional, List, Union, Tuple
@@ -39,6 +39,8 @@ class PortfolioFileManager:
         # Load user preferences
         self.preferences = self._load_preferences()
 
+        self.logger.info("FileManager initialized successfully")
+
     def _setup_directories(self):
         """Create necessary directory structure"""
         # Base directories
@@ -69,6 +71,7 @@ class PortfolioFileManager:
     def _setup_database(self):
         """Initialize SQLite database for file tracking"""
         with sqlite3.connect(self.db_path) as conn:
+            # Create uploaded_files table with additional columns
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS uploaded_files (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,10 +84,14 @@ class PortfolioFileManager:
                     processing_status TEXT,
                     error_message TEXT,
                     file_path TEXT,
-                    updated_at TEXT
+                    updated_at TEXT,
+                    is_additional BOOLEAN DEFAULT FALSE,
+                    primary_file_id INTEGER,
+                    FOREIGN KEY (primary_file_id) REFERENCES uploaded_files (id)
                 )
             ''')
             
+            # Create pivot_tables table
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS pivot_tables (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,6 +105,64 @@ class PortfolioFileManager:
                     FOREIGN KEY (source_file_id) REFERENCES uploaded_files (id)
                 )
             ''')
+            
+            # Create processing_totals table
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS processing_totals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    file_id INTEGER,
+                    gross_total REAL,
+                    net_total REAL,
+                    fee_total REAL,
+                    processing_date TEXT,
+                    created_at TEXT,
+                    FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
+                )
+            ''')
+            
+            conn.commit()
+
+
+    def _migrate_database(self):
+        """Run any necessary database migrations"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # Check for processing_totals table
+                cursor = conn.execute("""
+                    SELECT name 
+                    FROM sqlite_master 
+                    WHERE type='table' AND name='processing_totals'
+                """)
+                if not cursor.fetchone():
+                    # Create processing_totals table if it doesn't exist
+                    conn.execute('''
+                        CREATE TABLE IF NOT EXISTS processing_totals (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            file_id INTEGER,
+                            gross_total REAL,
+                            net_total REAL,
+                            fee_total REAL,
+                            processing_date TEXT,
+                            created_at TEXT,
+                            FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
+                        )
+                    ''')
+                
+                # Check if new columns exist in uploaded_files
+                cursor = conn.execute("PRAGMA table_info(uploaded_files)")
+                columns = [row[1] for row in cursor.fetchall()]
+                
+                if 'is_additional' not in columns:
+                    conn.execute("ALTER TABLE uploaded_files ADD COLUMN is_additional BOOLEAN DEFAULT FALSE")
+                    
+                if 'primary_file_id' not in columns:
+                    conn.execute("ALTER TABLE uploaded_files ADD COLUMN primary_file_id INTEGER REFERENCES uploaded_files(id)")
+                
+                conn.commit()
+                
+        except Exception as e:
+            self.logger.error(f"Error during database migration: {str(e)}")
+            raise
 
     def _setup_logging(self) -> logging.Logger:
         """Configure logging with rotation and formatting"""
@@ -140,18 +205,32 @@ class PortfolioFileManager:
         except Exception as e:
             self.logger.error(f"Error saving preferences: {e}")
 
-    def save_uploaded_file(self, file_path: Path, portfolio: Portfolio,
-                          funder: str, date_received: datetime = None) -> Tuple[Path, int]:
+    def save_uploaded_file(
+        self,
+        file_path: Path,
+        portfolio: Portfolio,
+        funder: str,
+        date_received: Optional[datetime] = None,
+        is_additional: bool = False,
+        primary_file_id: Optional[int] = None
+    ) -> Tuple[Path, int]:
         """
-        Save an uploaded file to the appropriate portfolio/funder directory
-        Returns: (new_file_path, database_id)
+        Save an uploaded file and record it in the database.
+        
+        Args:
+            file_path: Path to the file to save
+            portfolio: Portfolio the file belongs to
+            funder: Name of the funder
+            date_received: When the file was received (defaults to now)
+            is_additional: Whether this is an additional file in a batch
+            primary_file_id: ID of the primary file if this is an additional file
+            
+        Returns:
+            Tuple[Path, int]: (Path to saved file, database ID)
         """
         if date_received is None:
             date_received = datetime.now()
-            
-        if not PortfolioStructure.validate_portfolio_funder(portfolio, funder):
-            raise ValueError(f"Funder {funder} is not associated with portfolio {portfolio.value}")
-        
+
         # Generate new filename
         timestamp = date_received.strftime("%Y%m%d_%H%M%S")
         new_filename = f"{portfolio.value}_{funder}_{timestamp}_{file_path.name}"
@@ -169,19 +248,39 @@ class PortfolioFileManager:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute('''
                     INSERT INTO uploaded_files (
-                        original_filename, stored_filename, portfolio, funder,
-                        upload_date, processing_status, file_path, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (file_path.name, new_filename, portfolio.value, funder,
-                     date_received.isoformat(), 'pending', str(new_path),
-                     datetime.now().isoformat()))
+                        original_filename,
+                        stored_filename,
+                        portfolio,
+                        funder,
+                        upload_date,
+                        processing_date,
+                        processing_status,
+                        file_path,
+                        updated_at,
+                        is_additional,
+                        primary_file_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    file_path.name,
+                    new_filename,
+                    portfolio.value,
+                    funder,
+                    datetime.now().isoformat(),
+                    date_received.isoformat(),
+                    'pending',
+                    str(new_path),
+                    datetime.now().isoformat(),
+                    is_additional,
+                    primary_file_id
+                ))
                 file_id = cursor.lastrowid
             
             # Update recent files
             self._update_recent_files(str(new_path))
             
             self.logger.info(f"Saved file {file_path.name} as {new_filename} "
-                           f"for {portfolio.value}/{funder}")
+                           f"for {portfolio.value}/{funder}"
+                           f"{' (additional file)' if is_additional else ''}")
             
             return new_path, file_id
             
@@ -258,6 +357,93 @@ class PortfolioFileManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]
+        
+    def get_unprocessed_files(
+        self,
+        portfolio: Portfolio,
+        funder: str,
+        processing_date: datetime
+    ) -> List[Path]:
+        """
+        Get unprocessed files for a specific portfolio, funder, and date.
+        
+        Args:
+            portfolio: Portfolio to check
+            funder: Name of the funder
+            processing_date: The processing date to check for
+            
+        Returns:
+            List[Path]: List of paths to unprocessed files
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute('''
+                    SELECT file_path, original_filename
+                    FROM uploaded_files
+                    WHERE portfolio = ?
+                    AND funder = ?
+                    AND DATE(processing_date) = DATE(?)
+                    AND (processing_status = 'pending' OR processing_status IS NULL)
+                ''', (
+                    portfolio.value,
+                    funder,
+                    processing_date.strftime('%Y-%m-%d')
+                ))
+                
+                files = []
+                for row in cursor.fetchall():
+                    file_path = Path(row[0])
+                    if file_path.exists():
+                        files.append(file_path)
+                    else:
+                        self.logger.warning(f"File not found at path: {file_path}, original filename: {row[1]}")
+                
+                self.logger.info(f"Found {len(files)} unprocessed files for {portfolio.value}/{funder} "
+                               f"on {processing_date.strftime('%Y-%m-%d')}")
+                return files
+                
+        except Exception as e:
+            self.logger.error(f"Error getting unprocessed files: {str(e)}")
+            return []
+        
+    def mark_files_as_processed(
+        self,
+        portfolio: Portfolio,
+        funder: str,
+        processing_date: datetime
+    ) -> None:
+        """
+        Mark all related files as processed.
+        
+        Args:
+            portfolio: Portfolio being processed
+            funder: Name of the funder
+            processing_date: The processing date
+        """
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute('''
+                    UPDATE uploaded_files
+                    SET processing_status = 'completed',
+                        updated_at = ?
+                    WHERE portfolio = ?
+                    AND funder = ?
+                    AND DATE(processing_date) = DATE(?)
+                    AND (processing_status = 'pending' OR processing_status IS NULL)
+                ''', (
+                    datetime.now().isoformat(),
+                    portfolio.value,
+                    funder,
+                    processing_date.strftime('%Y-%m-%d')
+                ))
+                
+                rows_updated = cursor.rowcount
+                self.logger.info(f"Marked {rows_updated} files as processed for {portfolio.value}/{funder} "
+                               f"on {processing_date.strftime('%Y-%m-%d')}")
+                
+        except Exception as e:
+            self.logger.error(f"Error marking files as processed: {str(e)}")
+            raise
 
     def _update_recent_files(self, file_path: str):
         """Update the list of recent files in preferences"""
@@ -279,7 +465,8 @@ class PortfolioFileManager:
         file_path: Path,
         pivot_table: pd.DataFrame,
         totals: Dict[str, float],
-        processing_date: Optional[datetime] = None
+        processing_date: Optional[datetime] = None,
+        additional_files: Optional[List[Path]] = None
     ) -> None:
         """
         Save processed data including pivot table and totals.
@@ -295,26 +482,45 @@ class PortfolioFileManager:
         try:
             if processing_date is None:
                 processing_date = datetime.now()
-            # First save the uploaded file and get the file ID
+                
+            additional_files = additional_files or []  # Initialize to empty list if None
+
+            # Save the primary file and get its ID
             new_path, file_id = self.save_uploaded_file(
                 file_path=file_path,
                 portfolio=portfolio,
                 funder=funder,
                 date_received=processing_date
             )
-            
-            # Save pivot table directly as DataFrame
-            pivot_path = self.save_pivot_table(
-                data=pivot_table,
-                portfolio=portfolio,
-                funder=funder,
-                source_file_id=file_id,
-                date_generated=processing_date
-            )
-            
 
-            # Update processing status in database
+            # Save additional files if any
+            additional_ids = []
+            for add_file in additional_files:
+                _, add_id = self.save_uploaded_file(
+                    file_path=add_file,
+                    portfolio=portfolio,
+                    funder=funder,
+                    date_received=processing_date,
+                    is_additional=True,
+                    primary_file_id=file_id
+                )
+                additional_ids.append(add_id)
+
+            # Generate weekly identifier for pivot table
+            week_start = processing_date - timedelta(days=processing_date.weekday())
+            week_identifier = week_start.strftime("%Y%m%d")
+
+            # Save pivot table with week identifier
+            pivot_filename = f"{portfolio.value}_{funder}_pivot_{week_identifier}.csv"
+            save_dir = self.base_dir / portfolio.value / "outputs" / funder
+            pivot_path = save_dir / pivot_filename
+
+            # Save the pivot table
+            pivot_table.to_csv(pivot_path, index=False)
+
+            # Update database records
             with sqlite3.connect(self.db_path) as conn:
+                # Update primary file status
                 conn.execute('''
                     UPDATE uploaded_files
                     SET processing_status = ?,
@@ -322,26 +528,48 @@ class PortfolioFileManager:
                         processing_date = ?
                     WHERE id = ?
                 ''', ('completed', datetime.now().isoformat(), processing_date.isoformat(), file_id))
-                
-                # Make sure processing_totals table has processing_date column
+
+                # Update additional files status
+                if additional_ids:
+                    placeholders = ','.join('?' * len(additional_ids))
+                    conn.execute(f'''
+                        UPDATE uploaded_files
+                        SET processing_status = ?,
+                            updated_at = ?,
+                            processing_date = ?
+                        WHERE id IN ({placeholders})
+                    ''', ['completed', datetime.now().isoformat(), processing_date.isoformat(), *additional_ids])
+
+                # Record pivot table
                 conn.execute('''
-                    CREATE TABLE IF NOT EXISTS processing_totals (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        file_id INTEGER,
-                        gross_total REAL,
-                        net_total REAL,
-                        fee_total REAL,
-                        processing_date TEXT,
-                        created_at TEXT,
-                        FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
-                    )
-                ''')
-                
-                # Insert totals
+                    INSERT INTO pivot_tables (
+                        source_file_id,
+                        stored_filename,
+                        creation_date,
+                        processing_date,
+                        portfolio,
+                        funder,
+                        file_path
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    file_id,
+                    pivot_filename,
+                    datetime.now().isoformat(),
+                    processing_date.isoformat(),
+                    portfolio.value,
+                    funder,
+                    str(pivot_path)
+                ))
+
+                # Store totals
                 conn.execute('''
                     INSERT INTO processing_totals (
-                        file_id, gross_total, net_total, fee_total,
-                        processing_date, created_at
+                        file_id,
+                        gross_total,
+                        net_total,
+                        fee_total,
+                        processing_date,
+                        created_at
                     ) VALUES (?, ?, ?, ?, ?, ?)
                 ''', (
                     file_id,
@@ -351,13 +579,15 @@ class PortfolioFileManager:
                     processing_date.isoformat(),
                     datetime.now().isoformat()
                 ))
-            
-            self.logger.info(
-                f"Successfully saved processed data for {portfolio.value}/{funder}. "
-                f"File ID: {file_id}, Pivot table saved to: {pivot_path}, "
-                f"Processing Date: {processing_date.strftime('%Y-%m-%d')}"
-            )
-            
+
+                self.logger.info(
+                    f"Successfully saved processed data for {portfolio.value}/{funder}. "
+                    f"Primary File ID: {file_id}, "
+                    f"Additional Files: {len(additional_ids) if additional_ids else 0}, "
+                    f"Pivot table saved to: {pivot_path}, "
+                    f"Processing Date: {processing_date.strftime('%Y-%m-%d')}"
+                )
+
         except Exception as e:
             error_msg = f"Error saving processed data: {str(e)}"
             self.logger.error(error_msg)

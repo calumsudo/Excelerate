@@ -9,7 +9,7 @@ class PortfolioStructure:
     """Configuration for portfolio structure and funders"""
     
     # Updated to match exact names from parser classes
-    SHARED_FUNDERS = ["ACS", "BHB", "Boom", "Kings", "EFIN", "ClearView"]  # Fixed eFin -> EFIN, Clear View -> ClearView
+    SHARED_FUNDERS = ["ACS", "BHB", "Boom", "Kings", "EFIN", "ClearView"] 
     ALDER_SPECIFIC_FUNDERS = ["Vesper"]
     
     @classmethod

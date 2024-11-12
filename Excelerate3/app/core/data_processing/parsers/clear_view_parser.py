@@ -1,3 +1,4 @@
+# core/data_processing/parsers/clear_view_parser.py
 from pathlib import Path
 import pandas as pd
 from typing import Tuple, Optional, Dict, List, Union
@@ -39,6 +40,13 @@ class ClearViewParser(BaseParser):
             'Syn Gross Amount': float,
             'Syn Net Amount': float
         }
+
+        self._combined_df = None
+
+        # Log initialization
+        self.logger.info(f"Initializing ClearView parser with {len(self.all_file_paths)} files")
+        for path in self.all_file_paths:
+            self.logger.info(f"File to process: {path}")
         
     @property
     def file_names(self) -> str:
@@ -57,6 +65,7 @@ class ClearViewParser(BaseParser):
         if isinstance(value, (int, float)):
             return float(value)
         if isinstance(value, str):
+            # Remove currency symbols, commas, and handle parentheses
             value = (
                 value.replace("$", "")
                 .replace(",", "")
@@ -77,6 +86,12 @@ class ClearViewParser(BaseParser):
             all_dfs = []
             
             for file_path in self.all_file_paths:
+                self.logger.info(f"Processing file: {file_path}")
+                
+                if not file_path.exists():
+                    self.logger.error(f"File does not exist: {file_path}")
+                    continue
+                    
                 encodings_to_try = [
                     self.detect_encoding(),
                     'utf-8',
@@ -88,6 +103,7 @@ class ClearViewParser(BaseParser):
                 for encoding in encodings_to_try:
                     try:
                         df = pd.read_csv(file_path, encoding=encoding)
+                        self.logger.info(f"Successfully read file with {encoding} encoding")
                         break
                     except UnicodeDecodeError:
                         continue
@@ -96,18 +112,71 @@ class ClearViewParser(BaseParser):
                         continue
                 
                 if df is None:
-                    raise ValueError(f"Unable to read {file_path} with any encoding")
+                    self.logger.error(f"Unable to read {file_path} with any encoding")
+                    continue
+
+                # Log unique status values
+                unique_statuses = df['Advance Status'].unique()
+                self.logger.info(f"Found status values: {unique_statuses}")
                 
-                # Add Merchant Name if missing
-                if "Merchant Name" not in df.columns:
-                    df["Merchant Name"] = df["AdvanceID"]
+                # Verify required columns
+                missing_columns = [col for col in self.required_columns if col not in df.columns]
+                if missing_columns:
+                    self.logger.error(f"Missing required columns in {file_path}: {missing_columns}")
+                    continue
+
+                # Convert AdvanceID to string immediately after reading
+                df['AdvanceID'] = df['AdvanceID'].astype(str)
+                
+                # Convert amount columns to float
+                df['Syn Gross Amount'] = df['Syn Gross Amount'].apply(self.currency_to_float)
+                df['Syn Net Amount'] = df['Syn Net Amount'].apply(self.currency_to_float)
+                
+                # Filter for valid records (more permissive status check)
+                valid_statuses = ['Funded - In Repayment', 'In Repayment', 'Funded']
+                df = df[
+                    df['Advance Status'].str.contains('|'.join(valid_statuses), case=False, na=False) |
+                    (df['Syn Gross Amount'] > 0)
+                ]
+                
+                if len(df) == 0:
+                    self.logger.warning(f"No valid records found in {file_path} after filtering")
+                    # Log some sample rows from original data
+                    self.logger.info("Sample of original data:")
+                    self.logger.info(df.head().to_string())
+                    continue
+                
+                self.logger.info(f"Found {len(df)} valid records in {file_path}")
+                
+                # Log some statistics
+                self.logger.info("Summary of amounts:")
+                self.logger.info(f"Total Syn Gross Amount: {df['Syn Gross Amount'].sum():,.2f}")
+                self.logger.info(f"Total Syn Net Amount: {df['Syn Net Amount'].sum():,.2f}")
                 
                 all_dfs.append(df)
             
+            if not all_dfs:
+                raise ValueError("No valid data found in any of the provided files")
+            
             # Combine all dataframes
-            combined_df = pd.concat(all_dfs, ignore_index=True)
-            self._df = combined_df
-            return combined_df
+            self._combined_df = pd.concat(all_dfs, ignore_index=True)
+            self.logger.info(f"Combined DataFrame has {len(self._combined_df)} rows")
+            
+            # Log combined data statistics
+            self.logger.info("Combined data summary:")
+            self.logger.info(f"Total records: {len(self._combined_df)}")
+            self.logger.info(f"Unique AdvanceIDs: {len(self._combined_df['AdvanceID'].unique())}")
+            self.logger.info(f"Total Syn Gross Amount: {self._combined_df['Syn Gross Amount'].sum():,.2f}")
+            
+            # Deduplicate based on unique identifiers and date
+            self._combined_df = self._combined_df.sort_values('Last Merchant Cleared Date').drop_duplicates(
+                subset=['AdvanceID', 'Syn Cleared Date', 'Syn Gross Amount', 'Syn Net Amount'],
+                keep='last'
+            )
+            
+            self.logger.info(f"After deduplication: {len(self._combined_df)} rows")
+            self._df = self._combined_df
+            return self._combined_df
 
         except Exception as e:
             self.logger.error(f"Error reading CSV files: {str(e)}")
@@ -117,41 +186,54 @@ class ClearViewParser(BaseParser):
         """Process the combined data from all files."""
         try:
             df = self._df.copy()
+            self.logger.info(f"Starting data processing with {len(df)} rows")
 
-            # Convert currency columns
-            df['Syn Gross Amount'] = df['Syn Gross Amount'].apply(self.currency_to_float)
-            df['Syn Net Amount'] = df['Syn Net Amount'].apply(self.currency_to_float)
+            # Print sample data before processing
+            self.logger.info("Sample data before processing:")
+            self.logger.info(df[['AdvanceID', 'Syn Gross Amount', 'Syn Net Amount']].head().to_string())
 
             # Filter out rows with zero values
-            df = df[
-                (df['Syn Gross Amount'] != 0) &
-                (df['Syn Net Amount'] != 0)
-            ]
+            non_zero_mask = (df['Syn Gross Amount'] != 0) & (df['Syn Net Amount'] != 0)
+            df = df[non_zero_mask]
+            self.logger.info(f"After filtering zeros: {len(df)} rows")
 
-            # Group by advance ID and merchant name
-            grouped = df.groupby(['AdvanceID', 'Merchant Name']).agg({
+            # Group by advance ID and sum the amounts
+            grouped = df.groupby(['AdvanceID'], as_index=False).agg({
+                'Advance Status': 'first',  # Keep the first status
                 'Syn Gross Amount': 'sum',
                 'Syn Net Amount': 'sum'
-            }).reset_index()
+            })
+            self.logger.info(f"After grouping: {len(grouped)} rows")
 
             # Calculate fees
             grouped['Servicing Fee'] = (grouped['Syn Gross Amount'] - grouped['Syn Net Amount']).round(2)
 
+            # Log grouped data
+            self.logger.info("Grouped data summary:")
+            self.logger.info(grouped.describe().to_string())
+
             # Create standardized DataFrame
             processed_df = pd.DataFrame({
                 "Advance ID": grouped['AdvanceID'],
-                "Merchant Name": grouped['Merchant Name'],
+                "Merchant Name": grouped['AdvanceID'],  # Use AdvanceID as Merchant Name since it's missing in the data
                 "Gross Payment": grouped['Syn Gross Amount'],
                 "Fees": grouped['Servicing Fee'].abs(),
                 "Net": grouped['Syn Net Amount']
             })
 
-            # Remove any all-zero rows
+            # Remove any remaining zero rows
             processed_df = processed_df[
                 ~((processed_df["Gross Payment"] == 0) &
                   (processed_df["Fees"] == 0) &
                   (processed_df["Net"] == 0))
             ]
+            self.logger.info(f"Final processed DataFrame has {len(processed_df)} rows")
+
+            # Log final totals
+            self.logger.info("Final totals:")
+            self.logger.info(f"Total Gross: {processed_df['Gross Payment'].sum():,.2f}")
+            self.logger.info(f"Total Net: {processed_df['Net'].sum():,.2f}")
+            self.logger.info(f"Total Fees: {processed_df['Fees'].sum():,.2f}")
 
             self._df = processed_df
             return processed_df
@@ -219,6 +301,9 @@ class ClearViewParser(BaseParser):
             total_gross = round(self._df["Gross Payment"].sum(), 2)
             total_net = round(self._df["Net"].sum(), 2)
             total_fee = round(self._df["Fees"].sum(), 2)
+
+            self.logger.info(f"Processed {len(self._df)} records with totals: "
+                           f"Gross=${total_gross:,.2f}, Net=${total_net:,.2f}")
 
             return pivot, total_gross, total_net, total_fee, None
 
