@@ -1,3 +1,4 @@
+# core/data_processing/parsers/base_parser.py
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Tuple, Optional, Dict
@@ -79,7 +80,7 @@ class BaseParser(ABC):
                          index: list,
                          aggfunc: str = "sum") -> pd.DataFrame:
         """
-        Create a standardized pivot table.
+        Create a standardized pivot table with index columns included.
         
         Args:
             df: Source DataFrame
@@ -101,4 +102,13 @@ class BaseParser(ABC):
         # Rename columns to standard names
         pivot.columns = ['Sum of Syn Gross Amount', 'Sum of Syn Net Amount', 'Total Servicing Fee']
         
+        # Reset the index to make the index columns regular columns
+        pivot = pivot.reset_index()
+        
+        # Handle the 'All' row in the index columns
+        # Replace 'All' with empty string in all but the first index column
+        total_row_mask = pivot[index[0]] == 'All'
+        for col in index[1:]:
+            pivot.loc[total_row_mask, col] = ''
+            
         return pivot

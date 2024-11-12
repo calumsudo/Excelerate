@@ -190,7 +190,7 @@ class PortfolioFileManager:
             self.logger.error(error_msg)
             raise
 
-    def save_pivot_table(self, data: List[List], portfolio: Portfolio,
+    def save_pivot_table(self, data: pd.DataFrame, portfolio: Portfolio,
                         funder: str, source_file_id: int,
                         date_generated: datetime = None) -> Path:
         """Save a generated pivot table"""
@@ -206,10 +206,13 @@ class PortfolioFileManager:
         file_path = save_dir / filename
         
         try:
-            # Save pivot table
-            with open(file_path, 'w', newline='') as f:
-                writer = csv.writer(f)
-                writer.writerows(data)
+            # If data is already a DataFrame, save it directly
+            if isinstance(data, pd.DataFrame):
+                data.to_csv(file_path, index=False)
+            else:
+                # Convert list data to DataFrame and save
+                df = pd.DataFrame(data[1:], columns=data[0])
+                df.to_csv(file_path, index=False)
             
             # Record in database
             with sqlite3.connect(self.db_path) as conn:
@@ -229,6 +232,7 @@ class PortfolioFileManager:
             error_msg = f"Error saving pivot table: {str(e)}"
             self.logger.error(error_msg)
             raise
+
 
     def get_recent_files(self, portfolio: Optional[Portfolio] = None,
                         funder: Optional[str] = None,
@@ -299,19 +303,16 @@ class PortfolioFileManager:
                 date_received=processing_date
             )
             
-            # Convert pivot table to list for saving
-            pivot_data = [pivot_table.columns.tolist()]  # Headers
-            pivot_data.extend(pivot_table.values.tolist())
-            
-            # Save pivot table and get the path
+            # Save pivot table directly as DataFrame
             pivot_path = self.save_pivot_table(
-                data=pivot_data,
+                data=pivot_table,
                 portfolio=portfolio,
                 funder=funder,
                 source_file_id=file_id,
                 date_generated=processing_date
             )
             
+
             # Update processing status in database
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute('''
