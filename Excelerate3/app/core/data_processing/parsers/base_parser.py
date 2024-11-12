@@ -73,12 +73,12 @@ class BaseParser(ABC):
         pass
 
     def create_pivot_table(self, 
-                         df: pd.DataFrame,
-                         gross_col: str,
-                         net_col: str,
-                         fee_col: str,
-                         index: list,
-                         aggfunc: str = "sum") -> pd.DataFrame:
+                        df: pd.DataFrame,
+                        gross_col: str,
+                        net_col: str,
+                        fee_col: str,
+                        index: list,
+                        aggfunc: str = "sum") -> pd.DataFrame:
         """
         Create a standardized pivot table with index columns included.
         
@@ -100,7 +100,12 @@ class BaseParser(ABC):
         ).round(2)
         
         # Rename columns to standard names
-        pivot.columns = ['Sum of Syn Gross Amount', 'Sum of Syn Net Amount', 'Total Servicing Fee']
+        column_mapping = {
+            gross_col: 'Sum of Syn Gross Amount',
+            net_col: 'Sum of Syn Net Amount',
+            fee_col: 'Total Servicing Fee'
+        }
+        pivot.columns = [column_mapping.get(col, col) for col in pivot.columns]
         
         # Reset the index to make the index columns regular columns
         pivot = pivot.reset_index()
