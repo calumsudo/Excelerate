@@ -2,9 +2,11 @@ import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD
 from typing import Optional, Dict, Type
 from pathlib import Path
+from datetime import datetime
 from .portfolio_windows.alder import AlderPage
 from .portfolio_windows.white_rabbit import WhiteRabbitPage
 from .components.drag_drop import DropZone
+from .components.date_selector import DateSelector
 from config.system_config import SystemConfig
 from managers.file_manager import PortfolioFileManager
 from managers.coordinator import PortfolioCoordinator
@@ -22,7 +24,7 @@ class Dashboard(TkinterDnD.Tk):
         self.minsize(800, 600)
         
         # Configure grid
-        self.grid_rowconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)  # Updated to account for date selector
         self.grid_columnconfigure(0, weight=1)
         
         # Initialize pages dict
@@ -31,12 +33,15 @@ class Dashboard(TkinterDnD.Tk):
         
         # Create main container
         self.container = ctk.CTkFrame(self)
-        self.container.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        self.container.grid(row=2, column=0, sticky="nsew", padx=10, pady=10)
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
         
         # Create navigation frame
         self.setup_navigation()
+        
+        # Create date selector
+        self.setup_date_selector()
         
         # Register pages
         self.setup_pages()
@@ -97,6 +102,23 @@ class Dashboard(TkinterDnD.Tk):
         # Configure all pages in grid
         for page in self.pages.values():
             page.grid(row=0, column=0, sticky="nsew")
+
+    def setup_date_selector(self):
+        """Create the date selector frame"""
+        self.date_selector = DateSelector(
+            self,
+            date_changed_callback=self._on_date_changed
+        )
+        self.date_selector.grid(row=1, column=0, sticky="ew", padx=10, pady=5)
+        
+    def _on_date_changed(self, new_date: datetime):
+        """Handle date selection changes"""
+        self.selected_date = new_date
+        # Update any necessary components or trigger reloads
+        
+    def get_selected_date(self) -> datetime:
+        """Get the currently selected processing date"""
+        return self.date_selector.get_selected_date()
             
     def show_page(self, page_name: str):
         """Switch to specified page"""

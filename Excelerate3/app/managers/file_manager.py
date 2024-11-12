@@ -77,6 +77,7 @@ class PortfolioFileManager:
                     portfolio TEXT,
                     funder TEXT,
                     upload_date TEXT,
+                    processing_date TEXT,
                     processing_status TEXT,
                     error_message TEXT,
                     file_path TEXT,
@@ -90,6 +91,7 @@ class PortfolioFileManager:
                     source_file_id INTEGER,
                     stored_filename TEXT,
                     creation_date TEXT,
+                    processing_date TEXT,
                     portfolio TEXT,
                     funder TEXT,
                     file_path TEXT,
@@ -272,7 +274,8 @@ class PortfolioFileManager:
         funder: str,
         file_path: Path,
         pivot_table: pd.DataFrame,
-        totals: Dict[str, float]
+        totals: Dict[str, float],
+        processing_date: Optional[datetime] = None
     ) -> None:
         """
         Save processed data including pivot table and totals.
@@ -283,13 +286,17 @@ class PortfolioFileManager:
             file_path: Original file path
             pivot_table: Processed pivot table DataFrame
             totals: Dictionary containing gross, net, and fee totals
+            processing_date: The Friday date this data should be processed for
         """
         try:
+            if processing_date is None:
+                processing_date = datetime.now()
             # First save the uploaded file and get the file ID
             new_path, file_id = self.save_uploaded_file(
                 file_path=file_path,
                 portfolio=portfolio,
-                funder=funder
+                funder=funder,
+                date_received=processing_date
             )
             
             # Convert pivot table to list for saving
@@ -301,7 +308,8 @@ class PortfolioFileManager:
                 data=pivot_data,
                 portfolio=portfolio,
                 funder=funder,
-                source_file_id=file_id
+                source_file_id=file_id,
+                date_generated=processing_date
             )
             
             # Update processing status in database
@@ -309,11 +317,12 @@ class PortfolioFileManager:
                 conn.execute('''
                     UPDATE uploaded_files
                     SET processing_status = ?,
-                        updated_at = ?
+                        updated_at = ?,
+                        processing_date = ?
                     WHERE id = ?
-                ''', ('completed', datetime.now().isoformat(), file_id))
+                ''', ('completed', datetime.now().isoformat(), processing_date.isoformat(), file_id))
                 
-                # Store totals in a new table if it doesn't exist
+                # Make sure processing_totals table has processing_date column
                 conn.execute('''
                     CREATE TABLE IF NOT EXISTS processing_totals (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -321,6 +330,7 @@ class PortfolioFileManager:
                         gross_total REAL,
                         net_total REAL,
                         fee_total REAL,
+                        processing_date TEXT,
                         created_at TEXT,
                         FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
                     )
@@ -329,19 +339,22 @@ class PortfolioFileManager:
                 # Insert totals
                 conn.execute('''
                     INSERT INTO processing_totals (
-                        file_id, gross_total, net_total, fee_total, created_at
-                    ) VALUES (?, ?, ?, ?, ?)
+                        file_id, gross_total, net_total, fee_total,
+                        processing_date, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
                 ''', (
                     file_id,
                     totals['gross'],
                     totals['net'],
                     totals['fee'],
+                    processing_date.isoformat(),
                     datetime.now().isoformat()
                 ))
             
             self.logger.info(
                 f"Successfully saved processed data for {portfolio.value}/{funder}. "
-                f"File ID: {file_id}, Pivot table saved to: {pivot_path}"
+                f"File ID: {file_id}, Pivot table saved to: {pivot_path}, "
+                f"Processing Date: {processing_date.strftime('%Y-%m-%d')}"
             )
             
         except Exception as e:
