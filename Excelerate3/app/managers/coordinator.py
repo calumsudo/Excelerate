@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Union
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from utils.date_utils import format_date_for_file, get_most_recent_friday, format_date_for_display
 import logging
 import pandas as pd
@@ -152,102 +152,6 @@ class PortfolioCoordinator:
         # For other funders, process immediately
         return True
 
-    def process_uploaded_file(
-        self, 
-        file_path: Path, 
-        portfolio: Portfolio,
-        processing_date: datetime = None
-    ) -> Tuple[bool, Optional[Dict], Optional[str]]:
-        """
-        Process an uploaded file for a specific portfolio.
-        
-        Args:
-            file_path: Path to the uploaded file
-            portfolio: Portfolio the file is being processed for
-            
-        Returns:
-            Tuple containing:
-            - bool: Success status
-            - Optional[Dict]: Results dictionary if successful
-            - Optional[str]: Error message if unsuccessful
-        """
-        self.logger.info(f"Starting file processing - Portfolio: {portfolio.value}, "
-                        f"Date: {processing_date.strftime('%Y-%m-%d') if processing_date else 'None'}")
-                        
-        try:
-            # First identify the funder
-            funder = self.classifier.get_best_match(file_path)
-            if not funder:
-                return False, None, "Unable to identify funder from file format"
-
-            if not PortfolioStructure.validate_portfolio_funder(portfolio, funder):
-                return False, None, f"Funder {funder} is not associated with portfolio {portfolio.value}"
-
-            # Check if we should process or accumulate
-            should_process = self._accumulate_file(file_path, portfolio, funder, processing_date)
-            
-            if not should_process:
-                return True, {
-                    "funder": funder,
-                    "status": "accumulated",
-                    "message": "File added to batch for processing"
-                }, None
-
-            # Get all accumulated files for processing
-            key = (portfolio.value, funder, processing_date.strftime('%Y-%m-%d'))
-            all_files = self._accumulated_files.get(key, [file_path])
-
-            # Set processing context
-            self.clear_processing_context()
-            self.set_processing_context(portfolio, processing_date)
-
-            # Create parser with all accumulated files
-            parser_class = self.parser_mapping.get(funder)
-            if not parser_class:
-                return False, None, f"No parser available for funder {funder}"
-
-            parser = parser_class(all_files)
-            pivot_table, total_gross, total_net, total_fee, error = parser.process()
-            
-            if error:
-                return False, None, error
-
-            # Save the combined result
-            self.file_manager.save_processed_data(
-                portfolio=self.current_portfolio,
-                funder=funder,
-                file_path=all_files[0],  # Use first file as reference
-                pivot_table=pivot_table,
-                totals={
-                    "gross": total_gross,
-                    "net": total_net,
-                    "fee": total_fee
-                },
-                processing_date=self.current_processing_date,
-                additional_files=all_files[1:]  # Pass additional files for tracking
-            )
-
-            # Clear accumulated files after successful processing
-            self._accumulated_files.pop(key, None)
-
-            return True, {
-                "funder": funder,
-                "totals": {
-                    "gross": total_gross,
-                    "net": total_net,
-                    "fee": total_fee
-                },
-                "processing_date": self.current_processing_date.strftime("%B %d, %Y") if self.current_processing_date else None,
-                "files_processed": len(all_files)
-            }, None
-
-        except Exception as e:
-            self.logger.error(f"Error processing file: {str(e)}")
-            return False, None, str(e)
-            
-        finally:
-            self.clear_processing_context()
-
     def get_processing_status(self, file_id: int) -> ProcessingStatus:
         """Get current processing status of a file"""
         # Implement status tracking logic
@@ -286,7 +190,8 @@ class PortfolioCoordinator:
         self, 
         file_path: Path, 
         portfolio: Portfolio,
-        processing_date: datetime = None
+        processing_date: datetime = None,
+        manual_funder: str = None
     ) -> Tuple[bool, Optional[Dict], Optional[str]]:
         """
         Process an uploaded file for a specific portfolio.
@@ -295,6 +200,7 @@ class PortfolioCoordinator:
             file_path: Path to the uploaded file
             portfolio: Portfolio the file is being processed for
             processing_date: The Friday date this file should be processed for
+            manual_funder: If provided, skip classification and use this funder
             
         Returns:
             Tuple containing:
@@ -304,8 +210,16 @@ class PortfolioCoordinator:
         """
         self.logger.info(f"Starting file processing - Portfolio: {portfolio.value}, "
                 f"Date: {processing_date.strftime('%Y-%m-%d') if processing_date else 'None'}")
-                
+
         try:
+            # If processing_date is None, get most recent Friday
+            if processing_date is None:
+                from utils.date_utils import get_most_recent_friday
+                processing_date = get_most_recent_friday()
+
+            self.logger.info(f"Starting file processing - Portfolio: {portfolio.value}, "
+                    f"Date: {processing_date.strftime('%Y-%m-%d')}")
+                
             # Clear any existing context and set new context
             self.clear_processing_context()
             self.set_processing_context(portfolio, processing_date)
@@ -313,11 +227,15 @@ class PortfolioCoordinator:
             # Validate context
             if not self._validate_context():
                 return False, None, "Processing context not properly set"
-
-            # First identify the funder
-            funder = self.classifier.get_best_match(file_path)
-            self.logger.info(f"Classifier identified funder as: {funder}")
             
+            # Get funder - either manual or classified
+            if manual_funder:
+                funder = manual_funder
+            else:
+                funder = self.classifier.get_best_match(file_path)
+            
+            self.logger.info(f"Using funder: {funder} ({'manual' if manual_funder else 'classified'})")            
+
             if not funder:
                 return False, None, "Unable to identify funder from file format"
                 
@@ -335,12 +253,35 @@ class PortfolioCoordinator:
             if error:
                 return False, None, error
 
+            # Get portfolio workbook path
+            workbook_path = self.file_manager.get_portfolio_workbook_path(portfolio)
+            if not workbook_path:
+                return False, None, "Portfolio workbook not found"
+
+            # Create workbook manager
+            from core.data_processing.excel.workbook_manager import WorkbookManager
+            workbook_manager = WorkbookManager(self.file_manager)
+
+            # Create backup
+            workbook_manager.backup_workbook(workbook_path, processing_date)
+
+            # Update workbook
+            unmatched, error = workbook_manager.update_workbook(
+                workbook_path,
+                pivot_table,
+                funder,
+                processing_date
+            )
+
+            if error:
+                return False, None, error
+
             # For ClearView, mark all related files as processed
-            if funder == "ClearView" and self.current_processing_date:
+            if funder == "ClearView":
                 self.file_manager.mark_files_as_processed(
                     portfolio=self.current_portfolio,
                     funder=funder,
-                    processing_date=self.current_processing_date
+                    processing_date=processing_date
                 )
 
             # Save processed data
@@ -354,7 +295,7 @@ class PortfolioCoordinator:
                     "net": total_net,
                     "fee": total_fee
                 },
-                processing_date=self.current_processing_date
+                processing_date=processing_date
             )
 
             return True, {
@@ -364,7 +305,8 @@ class PortfolioCoordinator:
                     "net": total_net,
                     "fee": total_fee
                 },
-                "processing_date": self.current_processing_date.strftime("%B %d, %Y") if self.current_processing_date else None
+                "unmatched_ids": unmatched,
+                "processing_date": processing_date.strftime("%B %d, %Y")
             }, None
 
         except Exception as e:

@@ -18,7 +18,7 @@ class DateSelector(ctk.CTkFrame):
         self.date_changed_callback = date_changed_callback
         
         # Get available dates
-        self.available_dates = get_available_fridays()
+        self.available_dates = get_available_fridays(4)
         self.formatted_dates = [format_date_for_display(d) for d in self.available_dates]
         
         # Default to most recent Friday

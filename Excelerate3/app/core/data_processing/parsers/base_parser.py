@@ -80,40 +80,68 @@ class BaseParser(ABC):
                         index: list,
                         aggfunc: str = "sum") -> pd.DataFrame:
         """
-        Create a standardized pivot table with index columns included.
+        Create a standardized pivot table with consistent formatting.
         
         Args:
-            df: Source DataFrame
-            gross_col: Name of gross amount column
-            net_col: Name of net amount column
-            fee_col: Name of fee column
-            index: Columns to group by
-            aggfunc: Aggregation function
+            df: Source DataFrame with columns:
+                - "Advance ID"
+                - "Merchant Name" (or equivalent)
+                - gross_col: column for gross amounts
+                - net_col: column for net amounts
+                - fee_col: column for fees
         """
-        # Create pivot table
-        pivot = pd.pivot_table(
-            df,
-            values=[gross_col, net_col, fee_col],
-            index=index,
-            aggfunc=aggfunc,
-            margins=True
-        ).round(2)
-        
-        # Rename columns to standard names
-        column_mapping = {
-            gross_col: 'Sum of Syn Gross Amount',
-            net_col: 'Sum of Syn Net Amount',
-            fee_col: 'Total Servicing Fee'
-        }
-        pivot.columns = [column_mapping.get(col, col) for col in pivot.columns]
-        
-        # Reset the index to make the index columns regular columns
-        pivot = pivot.reset_index()
-        
-        # Handle the 'All' row in the index columns
-        # Replace 'All' with empty string in all but the first index column
-        total_row_mask = pivot[index[0]] == 'All'
-        for col in index[1:]:
-            pivot.loc[total_row_mask, col] = ''
+        try:
+            # First standardize the input column names
+            df = df.copy()
             
-        return pivot
+            # Standardize the merchant/business name column to "Merchant Name"
+            name_columns = ["Business Name", "Merchant Name", "business_name", "merchant_name"]
+            for col in name_columns:
+                if col in df.columns:
+                    df["Merchant Name"] = df[col]
+                    break
+
+            # Create pivot table
+            pivot = pd.pivot_table(
+                df,
+                values=[gross_col, net_col, fee_col],
+                index=index,
+                aggfunc=aggfunc,
+                margins=True,
+                margins_name='Totals'  # This sets 'Totals' instead of 'All'
+            ).round(2)
+
+            # Reset index to make index columns regular columns
+            pivot = pivot.reset_index()
+
+            # Rename columns to standard names and reorder
+            pivot.columns = [
+                col if col in ["Advance ID", "Merchant Name"] 
+                else {
+                    gross_col: "Sum of Syn Gross Amount",
+                    net_col: "Sum of Syn Net Amount",
+                    fee_col: "Total Servicing Fee"
+                }[col] 
+                for col in pivot.columns
+            ]
+
+            # Set empty string in Merchant Name column for totals row
+            totals_mask = pivot["Advance ID"] == "Totals"
+            pivot.loc[totals_mask, "Merchant Name"] = ""
+
+            # Reorder columns to standard order
+            standard_columns = [
+                "Advance ID",
+                "Merchant Name",
+                "Sum of Syn Gross Amount",
+                "Total Servicing Fee",
+                "Sum of Syn Net Amount"
+            ]
+            
+            pivot = pivot[standard_columns]
+
+            return pivot
+
+        except Exception as e:
+            self.logger.error(f"Error creating pivot table: {str(e)}")
+            raise

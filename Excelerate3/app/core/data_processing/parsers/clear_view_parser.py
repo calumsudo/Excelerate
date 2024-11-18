@@ -215,49 +215,6 @@ class ClearViewParser(BaseParser):
         except Exception as e:
             return False, str(e)
 
-    def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
-        try:
-            # First validate format
-            is_valid, error_msg = self.validate_format()
-            if not is_valid:
-                return None, 0, 0, 0, error_msg
-
-            # Explicitly read CSV files if not already done
-            if self._df is None:
-                self.read_csv()
-                
-            if self._df is None:  # If still None after reading, there's an error
-                return None, 0, 0, 0, "Failed to read CSV files"
-
-            # Process the data
-            processed_df = self.process_data()
-            if processed_df is None:
-                return None, 0, 0, 0, "Failed to process data"
-
-            # Store processed data
-            self._df = processed_df
-
-            # Calculate totals before pivot
-            total_gross = processed_df["Gross Payment"].sum()
-            total_net = processed_df["Net"].sum()
-            total_fee = processed_df["Fees"].sum()
-
-            # Create pivot table
-            pivot = self.create_pivot_table(
-                df=processed_df,
-                gross_col="Gross Payment",
-                net_col="Net",
-                fee_col="Fees",
-                index=["Advance ID", "Merchant Name"]
-            )
-
-            return pivot, total_gross, total_net, total_fee, None
-
-        except Exception as e:
-            error_msg = f"Error processing ClearView files: {str(e)}"
-            self.logger.error(error_msg)
-            return None, 0, 0, 0, error_msg
-
     def process_data(self) -> pd.DataFrame:
         """Process the combined data from all files."""
         try:
@@ -270,13 +227,13 @@ class ClearViewParser(BaseParser):
             # First filter out NaN and invalid values from AdvanceID
             valid_id_mask = (
                 df['AdvanceID'].notna() & 
-                (df['AdvanceID'] != '') & 
                 (df['AdvanceID'].astype(str) != 'nan') &
+                (df['AdvanceID'].astype(str) != '') &
                 (~df['AdvanceID'].astype(str).str.contains(r'^\s*$', na=True))
             )
             df = df[valid_id_mask]
 
-            # Now convert AdvanceID to clean string format
+            # Clean and standardize AdvanceID
             def clean_advance_id(x):
                 try:
                     # Remove any commas and spaces
@@ -291,26 +248,22 @@ class ClearViewParser(BaseParser):
                     return None
 
             df['AdvanceID'] = df['AdvanceID'].apply(clean_advance_id)
-            
-            # Remove rows where clean_advance_id returned None
             df = df[df['AdvanceID'].notna()]
-            
-            # Remove the totals row
+
+            # Remove the totals row by identifying rows with no AdvanceID or containing 'Total'
             df = df[~(
                 df['Syn Gross Amount'].astype(str).str.contains('Total', na=False) |
                 df['Syn Net Amount'].astype(str).str.contains('Total', na=False)
             )]
-            
-            self.logger.info(f"After removing invalid IDs and totals: {len(df)} rows")
 
-            # Ensure amounts are numeric, removing any currency formatting
+            # Convert amount columns to numeric, handling currency formatting
             for col in ['Syn Gross Amount', 'Syn Net Amount']:
                 df[col] = pd.to_numeric(
                     df[col].astype(str).replace('[\$,]', '', regex=True),
                     errors='coerce'
                 )
 
-            # Filter out zero amounts and NaN values
+            # Filter out rows with zero or NaN amounts
             non_zero_mask = (
                 (df['Syn Gross Amount'] != 0) & 
                 (df['Syn Net Amount'] != 0) &
@@ -318,42 +271,77 @@ class ClearViewParser(BaseParser):
                 df['Syn Net Amount'].notna()
             )
             df = df[non_zero_mask]
-            self.logger.info(f"After filtering zeros: {len(df)} rows")
 
-            # Group by advance ID
+            # Group by AdvanceID and sum the amounts
             grouped = df.groupby(['AdvanceID'], as_index=False).agg({
-                'Advance Status': 'first',
                 'Syn Gross Amount': 'sum',
                 'Syn Net Amount': 'sum'
             })
-            
-            # Calculate fees
-            grouped['Fees'] = (grouped['Syn Gross Amount'] - grouped['Syn Net Amount']).abs().round(2)
 
-            # Create standardized DataFrame
+            # Calculate the servicing fee
+            grouped['Servicing Fee'] = (grouped['Syn Gross Amount'] - grouped['Syn Net Amount']).abs().round(2)
+
+            # Create final DataFrame with standardized column names
             processed_df = pd.DataFrame({
                 "Advance ID": grouped['AdvanceID'],
-                "Merchant Name": grouped['AdvanceID'],
-                "Gross Payment": grouped['Syn Gross Amount'],
-                "Net": grouped['Syn Net Amount'],
-                "Fees": grouped['Fees']
+                "Merchant Name": grouped['AdvanceID'],  # Using AdvanceID as Merchant Name
+                "Sum of Syn Net Amount": grouped['Syn Net Amount'].round(2),
+                "Sum of Syn Gross Amount": grouped['Syn Gross Amount'].round(2),
+                "Total Servicing Fee": grouped['Servicing Fee'].round(2)
             })
 
-            # Remove any remaining all-zero rows
-            processed_df = processed_df[
-                ~((processed_df["Gross Payment"] == 0) &
-                (processed_df["Net"] == 0) &
-                (processed_df["Fees"] == 0))
-            ]
+            # Ensure no decimal points in ID columns
+            processed_df["Advance ID"] = processed_df["Advance ID"].astype(str)
+            processed_df["Merchant Name"] = processed_df["Merchant Name"].astype(str)
 
             # Log final totals
             self.logger.info("Final totals:")
-            self.logger.info(f"Total Gross: {processed_df['Gross Payment'].sum():,.2f}")
-            self.logger.info(f"Total Net: {processed_df['Net'].sum():,.2f}")
-            self.logger.info(f"Total Fees: {processed_df['Fees'].sum():,.2f}")
+            self.logger.info(f"Total Gross: {processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
+            self.logger.info(f"Total Net: {processed_df['Sum of Syn Net Amount'].sum():,.2f}")
+            self.logger.info(f"Total Fees: {processed_df['Total Servicing Fee'].sum():,.2f}")
 
             return processed_df
 
         except Exception as e:
             self.logger.error(f"Error during processing: {str(e)}")
             raise
+
+    def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
+        try:
+            # First validate format
+            is_valid, error_msg = self.validate_format()
+            if not is_valid:
+                return None, 0, 0, 0, error_msg
+
+            # Read the data if not already done
+            if self._df is None:
+                self.read_csv()
+                
+            if self._df is None:
+                return None, 0, 0, 0, "Failed to read CSV files"
+
+            # Process the data
+            processed_df = self.process_data()
+            if processed_df is None:
+                return None, 0, 0, 0, "Failed to process data"
+
+            # Calculate totals
+            total_gross = processed_df["Sum of Syn Gross Amount"].sum()
+            total_net = processed_df["Sum of Syn Net Amount"].sum()
+            total_fee = processed_df["Total Servicing Fee"].sum()
+
+            # Create pivot table using base parser method
+            pivot = self.create_pivot_table(
+                df=processed_df,
+                gross_col="Sum of Syn Gross Amount",
+                net_col="Sum of Syn Net Amount",
+                fee_col="Total Servicing Fee",
+                index=["Advance ID", "Merchant Name"]
+            )
+
+            return pivot, total_gross, total_net, total_fee, None
+
+        except Exception as e:
+            error_msg = f"Error processing ClearView files: {str(e)}"
+            self.logger.error(error_msg)
+            return None, 0, 0, 0, error_msg

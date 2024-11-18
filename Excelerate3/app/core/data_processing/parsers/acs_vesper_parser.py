@@ -7,21 +7,21 @@ from io import StringIO
 class AcsVesperParser(BaseParser):
     def __init__(self, file_path: Path):
         super().__init__(file_path)
-        self.funder_name = "VESPER"
+        self.funder_name = None
         
     def read_csv(self) -> pd.DataFrame:
-        """Override read_csv to handle VESPER's specific format"""
+        """Override read_csv to handle ACS/Vesper's specific format"""
         try:
             # Read the CSV file into a list of lines
             with open(self.file_path, 'r') as f:
-                lines = f.readlines()
+                self.lines = f.readlines()
             
             # Remove empty lines
-            lines = [line for line in lines if line.strip()]
+            self.lines = [line for line in self.lines if line.strip()]
             
             # Find the header row index by looking for the line that starts with 'Advance ID'
             header_row_index = None
-            for idx, line in enumerate(lines):
+            for idx, line in enumerate(self.lines):
                 if line.strip().startswith('Advance ID'):
                     header_row_index = idx
                     break
@@ -30,32 +30,63 @@ class AcsVesperParser(BaseParser):
                 raise ValueError("Header row not found in the CSV file.")
 
             # Prepare the cleaned CSV data
-            cleaned_csv = StringIO(''.join(lines))
+            cleaned_csv = StringIO(''.join(self.lines))
 
             # Read the CSV, setting header to the identified header row
             cleaned_csv.seek(0)
             df = pd.read_csv(cleaned_csv, header=header_row_index)
 
             # Identify the latest 'Net' column that isn't a 'Total' column
-            columns = df.columns.tolist()
-            net_columns = [col for col in columns if "Net" in col and "Total" not in col]
-            latest_net_column = net_columns[-1] if net_columns else None
+            self.columns = df.columns.tolist()
+            net_columns = [col for col in self.columns if "Net" in col and "Total" not in col]
+            self.latest_net_column = net_columns[-1] if net_columns else None
 
-            if latest_net_column is None:
+            if self.latest_net_column is None:
                 raise ValueError("CSV file format is incorrect or 'Net' columns are missing.")
 
-            # Indexes for the 'Gross Payment' and 'Fees' that align with the latest 'Net' column
-            latest_week_index = columns.index(latest_net_column)
-            latest_gross_column = columns[latest_week_index - 2]
-            latest_fees_column = columns[latest_week_index - 1]
+            self._df = df
+            return df
+
+        except Exception as e:
+            self.logger.error(f"Error reading CSV: {str(e)}")
+            raise
+
+    def get_latest_net_column(self) -> str:
+        """Get the most recent net column name"""
+        if not hasattr(self, 'latest_net_column') or self.latest_net_column is None:
+            net_columns = [col for col in self._df.columns if "Net" in col and "Total" not in col]
+            if not net_columns:
+                raise ValueError("No valid Net columns found")
+            self.latest_net_column = net_columns[-1]
+        return self.latest_net_column
+
+    def process_data(self) -> pd.DataFrame:
+        """Process ACS/Vesper format data."""
+        try:
+            if self._df is None:
+                raise ValueError("No data available to process")
+
+            df = self._df.copy()
+            
+            # Get the latest week's columns
+            latest_net_column = self.get_latest_net_column()
+            latest_week_index = df.columns.get_loc(latest_net_column)
+            latest_gross_column = df.columns[latest_week_index - 2]
+            latest_fees_column = df.columns[latest_week_index - 1]
 
             # Extract relevant columns for the latest week
-            latest_week_df = df.iloc[:, [0, 1, latest_week_index - 2, latest_week_index - 1, latest_week_index]]
+            latest_week_df = df[[
+                "Advance ID",
+                "Merchant Name",
+                latest_gross_column,
+                latest_fees_column,
+                latest_net_column
+            ]].copy()
 
-            # Find the 'Grand Total' row
-            total_row = df[df["Advance ID"] == "Grand Total"]
+            # Log initial row count
+            self.logger.info(f"Initial row count: {len(latest_week_df)}")
 
-            # Rename the columns to match expected format
+            # Rename columns to match our standardized format
             latest_week_df.columns = [
                 "Advance ID",
                 "Merchant Name",
@@ -64,47 +95,66 @@ class AcsVesperParser(BaseParser):
                 "Net"
             ]
 
-            # Replace NaN with 0.00 and convert to float
-            latest_week_df = latest_week_df.fillna(0.00)
+            # Clean Advance IDs - remove any decimals and ensure string format
+            def clean_advance_id(x):
+                try:
+                    if pd.isna(x) or str(x).strip() == '':
+                        return None
+                    # Keep any alphabetic prefix (like VC or AC)
+                    prefix = ''.join(c for c in str(x) if c.isalpha())
+                    # Get the numeric part
+                    numeric = ''.join(c for c in str(x) if c.isdigit())
+                    if not numeric:
+                        return None
+                    return f"{prefix}{numeric}"
+                except (ValueError, TypeError):
+                    return None
+
+            latest_week_df["Advance ID"] = latest_week_df["Advance ID"].apply(clean_advance_id)
+            latest_week_df = latest_week_df[latest_week_df["Advance ID"].notna()]
             
-            # Convert amount columns to float
+            self.logger.info(f"Row count after ID cleaning: {len(latest_week_df)}")
+
+            # Convert amounts and fees to numeric
             for col in ["Gross Payment", "Fees", "Net"]:
-                latest_week_df[col] = (
-                    latest_week_df[col]
-                    .replace(r"[\$,]", "", regex=True)
-                    .astype(float)
-                    .round(2)
-                )
+                latest_week_df[col] = pd.to_numeric(
+                    latest_week_df[col].astype(str).replace(r"[\$,]", "", regex=True),
+                    errors='coerce'
+                ).fillna(0).round(2)
+
+            # Filter out rows where both gross and net are zero
+            active_rows_mask = (
+                (latest_week_df["Gross Payment"] > 0) |
+                (latest_week_df["Net"] > 0)
+            )
+            latest_week_df = latest_week_df[active_rows_mask]
             
-            # Make fees positive
-            latest_week_df["Fees"] = latest_week_df["Fees"].abs()
+            self.logger.info(f"Row count after amount filtering: {len(latest_week_df)}")
 
-            # Remove invalid rows
-            latest_week_df = latest_week_df[
-                latest_week_df["Merchant Name"].notna() &
-                (latest_week_df["Merchant Name"] != 0.0) &
-                (latest_week_df["Gross Payment"] != 0.0) &
-                (latest_week_df["Net"] != 0.0) &
-                (latest_week_df["Fees"] != 0.0)
-            ]
+            # Create final DataFrame with standardized column names
+            processed_df = pd.DataFrame({
+                "Advance ID": latest_week_df["Advance ID"],
+                "Merchant Name": latest_week_df["Merchant Name"],
+                "Sum of Syn Net Amount": latest_week_df["Net"],
+                "Sum of Syn Gross Amount": latest_week_df["Gross Payment"],
+                "Total Servicing Fee": (latest_week_df["Gross Payment"] - latest_week_df["Net"]).abs().round(2)
+            })
 
-            # Store the total row values for later use
-            if not total_row.empty:
-                self.total_gross = float(str(total_row[latest_gross_column].values[0]).replace("$", "").replace(",", ""))
-                self.total_net = float(str(total_row[latest_net_column].values[0]).replace("$", "").replace(",", ""))
-                self.total_fees = abs(float(str(total_row[latest_fees_column].values[0]).replace("$", "").replace(",", "")))
-            else:
-                self.total_gross = 0.0
-                self.total_net = 0.0
-                self.total_fees = 0.0
-
-            self._df = latest_week_df
-            return latest_week_df
+            # Log some sample data and totals for verification
+            self.logger.info(f"Final row count: {len(processed_df)}")
+            self.logger.info(f"Total Gross: {processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
+            self.logger.info(f"Total Net: {processed_df['Sum of Syn Net Amount'].sum():,.2f}")
+            self.logger.info(f"Total Fees: {processed_df['Total Servicing Fee'].sum():,.2f}")
+            
+            if len(processed_df) > 0:
+                self.logger.info("Sample of first row:")
+                self.logger.info(processed_df.iloc[0])
+            
+            return processed_df
 
         except Exception as e:
-            self.logger.error(f"Error reading VESPER CSV: {str(e)}")
+            self.logger.error(f"Error processing ACS/Vesper data: {str(e)}")
             raise
-
     def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
         try:
             # Validate format
@@ -112,29 +162,35 @@ class AcsVesperParser(BaseParser):
             if not is_valid:
                 return None, 0, 0, 0, error_msg
 
+            # Ensure we have data loaded
+            if self._df is None:
+                self.read_csv()
+
+            if self._df is None:
+                return None, 0, 0, 0, "Failed to read CSV file"
+
+            # Process the data
+            processed_df = self.process_data()
+            if processed_df is None:
+                return None, 0, 0, 0, "Failed to process data"
+
+            # Calculate totals
+            total_gross = processed_df["Sum of Syn Gross Amount"].sum()
+            total_net = processed_df["Sum of Syn Net Amount"].sum()
+            total_fee = processed_df["Total Servicing Fee"].sum()
+
             # Create pivot table
             pivot = self.create_pivot_table(
-                df=self._df,
-                gross_col="Gross Payment",
-                net_col="Net",
-                fee_col="Fees",
+                df=processed_df,
+                gross_col="Sum of Syn Gross Amount",
+                net_col="Sum of Syn Net Amount",
+                fee_col="Total Servicing Fee",
                 index=["Advance ID", "Merchant Name"]
             )
 
-            # Add the totals row
-            totals_row = pd.DataFrame({
-                "Advance ID": ["All"],
-                "Merchant Name": [""],
-                "Sum of Syn Gross Amount": [self.total_gross],
-                "Sum of Syn Net Amount": [self.total_net],
-                "Total Servicing Fee": [self.total_fees]
-            }).set_index(["Advance ID", "Merchant Name"])
-
-            pivot = pd.concat([pivot.iloc[:-1], totals_row])
-
-            return pivot, self.total_gross, self.total_net, self.total_fees, None
+            return pivot, total_gross, total_net, total_fee, None
 
         except Exception as e:
-            error_msg = f"Error processing VESPER CSV: {str(e)}"
+            error_msg = f"Error processing {self.funder_name or 'ACS/Vesper'} file: {str(e)}"
             self.logger.error(error_msg)
             return None, 0, 0, 0, error_msg

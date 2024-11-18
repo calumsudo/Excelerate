@@ -651,3 +651,27 @@ class PortfolioFileManager:
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]
+        
+
+    def save_portfolio_workbook(self, portfolio: Portfolio, workbook_path: Path) -> None:
+        """Save a portfolio's Excel workbook."""
+        try:
+            # Create portfolio config directory if it doesn't exist
+            config_dir = self.base_dir / portfolio.value / "config"
+            config_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Copy workbook to config directory with standardized name
+            import shutil
+            new_path = config_dir / f"{portfolio.value.lower()}_portfolio.xlsx"
+            shutil.copy2(workbook_path, new_path)
+            
+            self.logger.info(f"Saved {portfolio.value} portfolio workbook to {new_path}")
+            
+        except Exception as e:
+            self.logger.error(f"Error saving portfolio workbook: {str(e)}")
+            raise
+
+    def get_portfolio_workbook_path(self, portfolio: Portfolio) -> Optional[Path]:
+        """Get the path to a portfolio's Excel workbook if it exists."""
+        workbook_path = self.base_dir / portfolio.value / "config" / f"{portfolio.value.lower()}_portfolio.xlsx"
+        return workbook_path if workbook_path.exists() else None

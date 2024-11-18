@@ -6,22 +6,15 @@ from .base_parser import BaseParser
 class EfinParser(BaseParser):
     def __init__(self, file_path: Path):
         super().__init__(file_path)
-        self.funder_name = "EFIN"
+        self.funder_name = None
         self.required_columns = [
             'Funding Date',
             'Advance ID', 
             'Business Name',
             'Advance Status',
-            'Debit Amount',
-            'Debit Date',
-            'Last Merchant Cleared Date',
-            'Syndicators Name',
             'Payable Amt (Gross)',
             'Servicing Fee $',
-            'Payable Amt (Net)',
-            'Payable Cleared Date',
-            'Freq',
-            'Repay Type'
+            'Payable Amt (Net)'
         ]
         self.column_types = {
             'Advance ID': str,
@@ -68,99 +61,91 @@ class EfinParser(BaseParser):
             raise
 
     def process_data(self) -> pd.DataFrame:
-        """Process the data after validation"""
+        """Process EFIN data."""
         try:
-            print("\nProcessing CSV data...")
+            if self._df is None:
+                raise ValueError("No data available to process")
+
             df = self._df.copy()
 
-            # Filter for specific payable records
+            # Filter for valid transactions
             df = df[df['Advance Status'] == "Funded - In Repayment"]
-            print(f"Rows after status filter: {len(df)}")
 
-            # Convert currency columns
-            print("\nConverting currency columns...")
-            df['Payable Amt (Gross)'] = df['Payable Amt (Gross)'].apply(self.currency_to_float)
-            df['Servicing Fee $'] = df['Servicing Fee $'].apply(self.currency_to_float)
-            df['Payable Amt (Net)'] = df['Payable Amt (Net)'].apply(self.currency_to_float)
+            # Convert currency columns to numeric
+            for col in ['Payable Amt (Gross)', 'Servicing Fee $', 'Payable Amt (Net)']:
+                df[col] = pd.to_numeric(
+                    df[col].astype(str).replace(r'[\$,]', '', regex=True),
+                    errors='coerce'
+                )
 
-            # Group by Business Name and Advance ID
-            print("\nGrouping transactions...")
-            grouped = df.groupby(['Business Name', 'Advance ID']).agg({
-                'Payable Amt (Gross)': 'sum',
+            # Group by Advance ID and Business Name to get totals
+            grouped = df.groupby(['Advance ID', 'Business Name'], as_index=False).agg({
+                'Payable Amt (Net)': 'sum',
                 'Servicing Fee $': 'sum',
-                'Payable Amt (Net)': 'sum'
-            }).reset_index()
+                'Payable Amt (Gross)': 'sum'
+            })
 
-            print(f"Rows after grouping: {len(grouped)}")
+            # Round all amounts to 2 decimal places
+            for col in ['Payable Amt (Net)', 'Servicing Fee $', 'Payable Amt (Gross)']:
+                grouped[col] = grouped[col].round(2)
 
-            # Create standardized DataFrame
+            # Create standardized DataFrame with correct column mapping
             processed_df = pd.DataFrame({
                 "Advance ID": grouped['Advance ID'],
                 "Merchant Name": grouped['Business Name'],
-                "Gross Payment": grouped['Payable Amt (Gross)'],
-                "Fees": grouped['Servicing Fee $'].abs(),
-                "Net": grouped['Payable Amt (Net)']
+                "Sum of Syn Net Amount": grouped['Payable Amt (Net)'],
+                "Sum of Syn Gross Amount": grouped['Payable Amt (Gross)'],
+                "Total Servicing Fee": grouped['Servicing Fee $'].abs()  # Ensure fees are positive
             })
 
-            # Remove any all-zero rows
-            processed_df = processed_df[
-                ~((processed_df["Gross Payment"] == 0) &
-                  (processed_df["Fees"] == 0) &
-                  (processed_df["Net"] == 0))
-            ]
+            # Log the totals for verification
+            self.logger.info("Final totals:")
+            self.logger.info(f"Total Net: {processed_df['Sum of Syn Net Amount'].sum():,.2f}")
+            self.logger.info(f"Total Fee: {processed_df['Total Servicing Fee'].sum():,.2f}")
+            self.logger.info(f"Total Gross: {processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
 
-            print("\nFinal dataframe totals:")
-            print(f"Total Gross: ${processed_df['Gross Payment'].sum():,.2f}")
-            print(f"Total Fee: ${processed_df['Fees'].sum():,.2f}")
-            print(f"Total Net: ${processed_df['Net'].sum():,.2f}")
-
-            self._df = processed_df
             return processed_df
 
         except Exception as e:
-            print(f"\nError during processing: {str(e)}")
+            self.logger.error(f"Error processing EFIN data: {str(e)}")
             raise
 
     def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
         try:
-            # First read the file
-            self.read_csv()
-            
-            # Then validate format
+            # Validate format
             is_valid, error_msg = self.validate_format()
             if not is_valid:
                 return None, 0, 0, 0, error_msg
 
-            # Process the data
-            self.process_data()
+            # Ensure data is loaded
+            if self._df is None:
+                self.read_csv()
 
-            # Create pivot table
-            pivot = self.create_pivot_table(
-                df=self._df,
-                gross_col="Gross Payment",
-                net_col="Net",
-                fee_col="Fees",
-                index=["Advance ID", "Merchant Name"]
-            )
+            if self._df is None:
+                return None, 0, 0, 0, "Failed to read CSV file"
+
+            # Process the data
+            processed_df = self.process_data()
+            if processed_df is None:
+                return None, 0, 0, 0, "Failed to process data"
 
             # Calculate totals
-            total_gross = self._df["Gross Payment"].sum()
-            total_net = self._df["Net"].sum()
-            total_fee = self._df["Fees"].sum()
+            total_gross = processed_df["Sum of Syn Gross Amount"].sum()
+            total_net = processed_df["Sum of Syn Net Amount"].sum()
+            total_fee = processed_df["Total Servicing Fee"].sum()
 
-            # Round totals
-            total_gross = round(total_gross, 2)
-            total_net = round(total_net, 2)
-            total_fee = round(total_fee, 2)
-
-            print("\nFinal totals:")
-            print(f"Total Gross: ${total_gross:,.2f}")
-            print(f"Total Fee: ${total_fee:,.2f}")
-            print(f"Total Net: ${total_net:,.2f}")
+            # Create pivot table with standardized column names
+            pivot = self.create_pivot_table(
+                df=processed_df,
+                gross_col="Sum of Syn Gross Amount",
+                net_col="Sum of Syn Net Amount",
+                fee_col="Total Servicing Fee",
+                index=["Advance ID", "Merchant Name"]
+            )
 
             return pivot, total_gross, total_net, total_fee, None
 
         except Exception as e:
-            error_msg = f"Error processing EFIN file: {str(e)}"
-            print(f"\nError in process method: {error_msg}")
+            error_msg = f"Error processing {self.funder_name or 'EFIN'} file: {str(e)}"
+            self.logger.error(error_msg)
             return None, 0, 0, 0, error_msg

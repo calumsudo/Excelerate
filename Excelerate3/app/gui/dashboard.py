@@ -5,11 +5,13 @@ from pathlib import Path
 from datetime import datetime
 from .portfolio_windows.alder import AlderPage
 from .portfolio_windows.white_rabbit import WhiteRabbitPage
+from .settings_windows.settings_page import SettingsPage
 from .components.drag_drop import DropZone
 from .components.date_selector import DateSelector
 from config.system_config import SystemConfig
 from managers.file_manager import PortfolioFileManager
 from managers.coordinator import PortfolioCoordinator
+from .base_window import BasePage
 
 class Dashboard(TkinterDnD.Tk):
     def __init__(self):
@@ -96,7 +98,8 @@ class Dashboard(TkinterDnD.Tk):
         """Initialize all application pages"""
         self.pages = {
             "alder": AlderPage(self.container, self),
-            "white_rabbit": WhiteRabbitPage(self.container, self)
+            "white_rabbit": WhiteRabbitPage(self.container, self),
+            "settings": SettingsPage(self.container, self)
         }
         
         # Configure all pages in grid
@@ -139,6 +142,6 @@ class Dashboard(TkinterDnD.Tk):
         self.current_page = self.pages[page_name]
         
     def show_settings(self):
-        """Show settings dialog"""
-        # Implement settings dialog
+        """Show settings page"""
+        self.show_page("settings")
         pass
