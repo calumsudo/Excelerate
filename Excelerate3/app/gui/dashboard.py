@@ -6,6 +6,7 @@ from datetime import datetime
 from .portfolio_windows.alder import AlderPage
 from .portfolio_windows.white_rabbit import WhiteRabbitPage
 from .settings_windows.settings_page import SettingsPage
+from .file_explorer import FileExplorer
 from .components.drag_drop import DropZone
 from .components.date_selector import DateSelector
 from config.system_config import SystemConfig
@@ -86,6 +87,13 @@ class Dashboard(TkinterDnD.Tk):
             text="White Rabbit",
             command=lambda: self.show_page("white_rabbit")
         ).pack(side="left", padx=5)
+
+        # File Explorer button
+        ctk.CTkButton(
+            nav_frame,
+            text="📁 File Explorer",
+            command=lambda: self.show_page("file_explorer")
+        ).pack(side="left", padx=5)
         
         # Settings button (right-aligned)
         ctk.CTkButton(
@@ -99,6 +107,7 @@ class Dashboard(TkinterDnD.Tk):
         self.pages = {
             "alder": AlderPage(self.container, self),
             "white_rabbit": WhiteRabbitPage(self.container, self),
+            "file_explorer": FileExplorer(self.container, self),
             "settings": SettingsPage(self.container, self)
         }
         
