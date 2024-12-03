@@ -1,3 +1,5 @@
+# app/gui/portfolio_windows/white_rabbit.py
+
 from ..base_window import BasePage
 from ..components.drag_drop import DropZone
 from ..components.file_upload_section import FileUploadSection

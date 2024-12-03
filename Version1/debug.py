@@ -1,6 +1,6 @@
 from ui.authenticate_ui import AuthenticateUI
 from Version1.ui.dashboard_ui_version1 import DashboardUI
-from workbook import get_workbook_data, add_data_to_sheet
+from Version1.workbook import get_workbook_data, add_data_to_sheet
 import customtkinter as ctk
 from Version1.api_calls_version1 import get_excel_files, download_excel_workbook, update_workbook
 from log import log_to_file

@@ -1,3 +1,5 @@
+# app/gui/components/file_upload_section.py
+
 import customtkinter as ctk
 from pathlib import Path
 from typing import List, Callable

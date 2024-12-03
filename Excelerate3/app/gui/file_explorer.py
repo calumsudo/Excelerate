@@ -1,4 +1,4 @@
-# gui/file_explorer.py
+# app/gui/file_explorer.py
 
 import customtkinter as ctk
 from pathlib import Path

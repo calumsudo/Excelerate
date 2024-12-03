@@ -1,4 +1,5 @@
-# managers/coordinator.py
+# app/managers/coordinator.py
+
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Union
 from enum import Enum
@@ -15,6 +16,7 @@ from core.data_processing.parsers.bhb_parser import BHBParser
 from core.data_processing.parsers.acs_vesper_parser import AcsVesperParser
 from core.data_processing.parsers.clear_view_parser import ClearViewParser
 from .portfolio import Portfolio, PortfolioStructure
+from core.data_processing.excel.workbook_manager import WorkbookManager
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -212,29 +214,16 @@ class PortfolioCoordinator:
                 f"Date: {processing_date.strftime('%Y-%m-%d') if processing_date else 'None'}")
 
         try:
-            # If processing_date is None, get most recent Friday
             if processing_date is None:
-                from utils.date_utils import get_most_recent_friday
                 processing_date = get_most_recent_friday()
 
-            self.logger.info(f"Starting file processing - Portfolio: {portfolio.value}, "
-                    f"Date: {processing_date.strftime('%Y-%m-%d')}")
-                
-            # Clear any existing context and set new context
             self.clear_processing_context()
             self.set_processing_context(portfolio, processing_date)
             
-            # Validate context
-            if not self._validate_context():
-                return False, None, "Processing context not properly set"
-            
-            # Get funder - either manual or classified
             if manual_funder:
                 funder = manual_funder
             else:
                 funder = self.classifier.get_best_match(file_path)
-            
-            self.logger.info(f"Using funder: {funder} ({'manual' if manual_funder else 'classified'})")            
 
             if not funder:
                 return False, None, "Unable to identify funder from file format"
@@ -242,30 +231,55 @@ class PortfolioCoordinator:
             if not PortfolioStructure.validate_portfolio_funder(portfolio, funder):
                 return False, None, f"Funder {funder} is not associated with portfolio {portfolio.value}"
 
-            # Get appropriate parser
-            parser = self._get_parser_for_funder(funder, file_path)
+            # Special handling for ClearView
+            if funder == "ClearView":
+                # Save the current file
+                new_path, file_id = self.file_manager.save_uploaded_file(
+                    file_path=file_path,
+                    portfolio=portfolio,
+                    funder=funder,
+                    date_received=processing_date,
+                    processing_status='pending'
+                )
+                
+                # Get all files for this week, including the newly uploaded one
+                weekly_files = self.file_manager.get_unprocessed_files(
+                    portfolio=portfolio,
+                    funder=funder,
+                    processing_date=processing_date
+                )
+                
+                file_count = len(weekly_files)
+                self.logger.info(f"Processing ClearView files - Day {file_count}")
+                
+                # Process all available files together
+                parser = ClearViewParser(weekly_files)
+                
+            else:
+                # For other funders, process normally
+                parser = self._get_parser_for_funder(funder, file_path)
+                
             if not parser:
                 return False, None, f"No parser available for funder {funder}"
 
-            # Process the file
+            # Process file(s)
             pivot_table, total_gross, total_net, total_fee, error = parser.process()
             
             if error:
                 return False, None, error
 
-            # Get portfolio workbook path
+            # Get and validate workbook path
             workbook_path = self.file_manager.get_portfolio_workbook_path(portfolio)
             if not workbook_path:
                 return False, None, "Portfolio workbook not found"
 
-            # Create workbook manager
-            from core.data_processing.excel.workbook_manager import WorkbookManager
-            workbook_manager = WorkbookManager(self.file_manager)
-
-            # Create backup
-            workbook_manager.backup_workbook(workbook_path, processing_date)
-
             # Update workbook
+            workbook_manager = WorkbookManager(self.file_manager)
+            
+            # Only backup on first file of the week
+            if funder != "ClearView" or file_count == 1:
+                workbook_manager.backup_workbook(workbook_path, processing_date)
+                
             unmatched, error = workbook_manager.update_workbook(
                 workbook_path,
                 pivot_table,
@@ -276,26 +290,19 @@ class PortfolioCoordinator:
             if error:
                 return False, None, error
 
-            # For ClearView, mark all related files as processed
-            if funder == "ClearView":
-                self.file_manager.mark_files_as_processed(
-                    portfolio=self.current_portfolio,
-                    funder=funder,
-                    processing_date=processing_date
-                )
-
-            # Save processed data
+            # Save the processed results after each file
             self.file_manager.save_processed_data(
                 portfolio=self.current_portfolio,
                 funder=funder,
-                file_path=file_path,
+                file_path=weekly_files[0],  # Use first file as primary
                 pivot_table=pivot_table,
                 totals={
                     "gross": total_gross,
                     "net": total_net,
                     "fee": total_fee
                 },
-                processing_date=processing_date
+                processing_date=processing_date,
+                additional_files=weekly_files[1:]
             )
 
             return True, {
@@ -306,13 +313,12 @@ class PortfolioCoordinator:
                     "fee": total_fee
                 },
                 "unmatched_ids": unmatched,
-                "processing_date": processing_date.strftime("%B %d, %Y")
+                "processing_date": processing_date.strftime("%B %d, %Y"),
+                "files_processed": file_count if funder == "ClearView" else 1
             }, None
 
         except Exception as e:
             self.logger.error(f"Error processing file: {str(e)}")
             return False, None, str(e)
-            
         finally:
-            # Always clear the context when done
             self.clear_processing_context()

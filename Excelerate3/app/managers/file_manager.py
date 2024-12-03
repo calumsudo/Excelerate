@@ -1,4 +1,5 @@
-# managers/file_manager.py
+# app/managers/file_manager.py
+
 import json
 import csv
 import sqlite3
@@ -212,7 +213,8 @@ class PortfolioFileManager:
         funder: str,
         date_received: Optional[datetime] = None,
         is_additional: bool = False,
-        primary_file_id: Optional[int] = None
+        primary_file_id: Optional[int] = None,
+        processing_status: str = 'pending'
     ) -> Tuple[Path, int]:
         """
         Save an uploaded file and record it in the database.
@@ -224,6 +226,7 @@ class PortfolioFileManager:
             date_received: When the file was received (defaults to now)
             is_additional: Whether this is an additional file in a batch
             primary_file_id: ID of the primary file if this is an additional file
+            processing_status: Initial processing status for the file
             
         Returns:
             Tuple[Path, int]: (Path to saved file, database ID)
@@ -231,20 +234,15 @@ class PortfolioFileManager:
         if date_received is None:
             date_received = datetime.now()
 
-        # Generate new filename
         timestamp = date_received.strftime("%Y%m%d_%H%M%S")
         new_filename = f"{portfolio.value}_{funder}_{timestamp}_{file_path.name}"
-        
-        # Determine save path
         save_dir = self.base_dir / portfolio.value / "uploads" / funder
         new_path = save_dir / new_filename
         
         try:
-            # Copy file
             import shutil
             shutil.copy2(file_path, new_path)
             
-            # Record in database
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute('''
                     INSERT INTO uploaded_files (
@@ -267,7 +265,7 @@ class PortfolioFileManager:
                     funder,
                     datetime.now().isoformat(),
                     date_received.isoformat(),
-                    'pending',
+                    processing_status,
                     str(new_path),
                     datetime.now().isoformat(),
                     is_additional,
@@ -275,12 +273,10 @@ class PortfolioFileManager:
                 ))
                 file_id = cursor.lastrowid
             
-            # Update recent files
             self._update_recent_files(str(new_path))
-            
             self.logger.info(f"Saved file {file_path.name} as {new_filename} "
-                           f"for {portfolio.value}/{funder}"
-                           f"{' (additional file)' if is_additional else ''}")
+                        f"for {portfolio.value}/{funder}"
+                        f"{' (additional file)' if is_additional else ''}")
             
             return new_path, file_id
             

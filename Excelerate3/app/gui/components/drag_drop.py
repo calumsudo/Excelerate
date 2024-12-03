@@ -1,4 +1,5 @@
-# components/drag_drop.py
+# app/gui/components/drag_drop.py
+
 import customtkinter as ctk
 from typing import Optional
 from pathlib import Path

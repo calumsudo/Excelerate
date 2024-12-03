@@ -1,3 +1,5 @@
+# app/gui/dashboard.py
+
 import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD
 from typing import Optional, Dict, Type

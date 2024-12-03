@@ -1,4 +1,5 @@
-# core/data_processing/parsers/base_parser.py
+# app/core/data_processing/parsers/base_parser.py
+
 from abc import ABC, abstractmethod
 import pandas as pd
 from typing import Tuple, Optional, Dict

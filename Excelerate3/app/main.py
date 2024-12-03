@@ -1,3 +1,5 @@
+# app/main.py
+
 import customtkinter as ctk
 from gui.dashboard import Dashboard
 

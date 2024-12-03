@@ -1,3 +1,5 @@
+# app/core/ml/funder_classifier.py
+
 from pathlib import Path
 import pandas as pd
 from typing import Optional, Dict, Set

@@ -6,11 +6,11 @@ from parsers.kings_parser import parse_kings
 from parsers.boom_parser import parse_boom
 from parsers.bhb_parser import parse_bhb
 from parsers.acs_parser import parse_acs
-from parsers.vesper_parser import parse_VSPR
+# from parsers.vesper_parser import parse_VSPR
 from parsers.cv_parser import parse_cv
 from log import log_to_file
 from datetime import datetime
-from Version1.pdf_reporter_version1 import generate_report
+from pdf_reporter_version1 import generate_report
 import os
 
 
@@ -35,7 +35,7 @@ class DashboardUI(ctk.CTkFrame):
             "Boom": None,
             "BHB": None,
             "ACS": None,
-            "VSPR": None,
+            # "VSPR": None,
             "CV": [],
         }
 
@@ -258,17 +258,17 @@ class DashboardUI(ctk.CTkFrame):
         self.acs_error_label = ctk.CTkLabel(self.acs_upload_frame, text="")
 
         # create vesper file upload frame, entry, button, and error message
-        self.VSPR_upload_frame = ctk.CTkFrame(self)
-        self.VSPR_entry = ctk.CTkEntry(
-            self.VSPR_upload_frame, width=600, placeholder_text="Vesper CSV File Path"
-        )
-        self.VSPR_button = ctk.CTkButton(
-            self.VSPR_upload_frame,
-            text="Browse for Vesper CSV",
-            command=lambda: self.browse_csv("VSPR"),
-            width=250,
-        )
-        self.VSPR_error_label = ctk.CTkLabel(self.VSPR_upload_frame, text="")
+        # self.VSPR_upload_frame = ctk.CTkFrame(self)
+        # self.VSPR_entry = ctk.CTkEntry(
+        #     self.VSPR_upload_frame, width=600, placeholder_text="Vesper CSV File Path"
+        # )
+        # self.VSPR_button = ctk.CTkButton(
+        #     self.VSPR_upload_frame,
+        #     text="Browse for Vesper CSV",
+        #     command=lambda: self.browse_csv("VSPR"),
+        #     width=250,
+        # )
+        # self.VSPR_error_label = ctk.CTkLabel(self.VSPR_upload_frame, text="")
 
         # create CV file upload frame, listbox, button, and error message
         self.clearview_upload_frame = ctk.CTkFrame(self)
@@ -316,14 +316,14 @@ class DashboardUI(ctk.CTkFrame):
             "ACS CSV File Path",
             4,
         )
-        self.setup_file_upload_frame(
-            self.VSPR_upload_frame,
-            self.VSPR_entry,
-            self.VSPR_button,
-            self.VSPR_error_label,
-            "Vesper CSV File Path",
-            5,  # Vesper is at row 5
-        )
+        # self.setup_file_upload_frame(
+        #     self.VSPR_upload_frame,
+        #     self.VSPR_entry,
+        #     self.VSPR_button,
+        #     self.VSPR_error_label,
+        #     "Vesper CSV File Path",
+        #     5,  # Vesper is at row 5
+        # )
         self.setup_file_upload_frame(
             self.clearview_upload_frame,
             self.clearview_listbox,
@@ -351,7 +351,7 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_button.configure(state="disabled")
         self.bhb_button.configure(state="disabled")
         self.acs_button.configure(state="disabled")
-        self.VSPR_button.configure(state="disabled")  # Added Vesper button
+        # self.VSPR_button.configure(state="disabled")  # Added Vesper button
         self.clearview_button.configure(state="disabled")
         self.process_button.configure(state="disabled")
 
@@ -465,7 +465,7 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_button.configure(state="normal")
         self.bhb_button.configure(state="normal")
         self.acs_button.configure(state="normal")
-        self.VSPR_button.configure(state="normal")  # Added Vesper button
+        # self.VSPR_button.configure(state="normal")  # Added Vesper button
         self.clearview_button.configure(state="normal")
         self.process_button.configure(state="normal")
 
@@ -508,10 +508,10 @@ class DashboardUI(ctk.CTkFrame):
                     self.csv_paths["ACS"] = file_path
                     self.acs_entry.delete(0, "end")
                     self.acs_entry.insert(0, file_path)
-                elif section == "VSPR":
-                    self.csv_paths["VSPR"] = file_path
-                    self.VSPR_entry.delete(0, "end")
-                    self.VSPR_entry.insert(0, file_path)
+                # elif section == "VSPR":
+                #     self.csv_paths["VSPR"] = file_path
+                #     self.VSPR_entry.delete(0, "end")
+                #     self.VSPR_entry.insert(0, file_path)
                 else:
                     # Handle unrecognized section
                     log_to_file(
@@ -528,11 +528,11 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_error_label.configure(text="")
         self.bhb_error_label.configure(text="")
         self.acs_error_label.configure(text="")
-        self.VSPR_error_label.configure(text="")
+        # self.VSPR_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
 
         # Process each section
-        sections = ["Kings", "Boom", "BHB", "ACS", "VSPR", "CV"]
+        sections = ["Kings", "Boom", "BHB", "ACS", "CV"]
         processed_data = {}
         for section in sections:
             if self.csv_paths.get(section):
@@ -560,7 +560,7 @@ class DashboardUI(ctk.CTkFrame):
                 processed_data["BHB"][0], processed_data["BHB"][1], processed_data["BHB"][2], processed_data["BHB"][3],
                 processed_data["CV"][0], processed_data["CV"][1], processed_data["CV"][2], processed_data["CV"][3],
                 processed_data["ACS"][0], processed_data["ACS"][1], processed_data["ACS"][2], processed_data["ACS"][3],
-                processed_data["VSPR"][0], processed_data["VSPR"][1], processed_data["VSPR"][2], processed_data["VSPR"][3],
+                # processed_data["VSPR"][0], processed_data["VSPR"][1], processed_data["VSPR"][2], processed_data["VSPR"][3],
                 self.selected_file,
                 output_path,
                 portfolio_name,
@@ -588,8 +588,8 @@ class DashboardUI(ctk.CTkFrame):
                     return parse_bhb(csv_path, self.output_dir_var.get(), portfolio)
                 elif section == "ACS":
                     return parse_acs(csv_path, self.output_dir_var.get(), portfolio)
-                elif section == "VSPR":
-                    return parse_VSPR(csv_path, self.output_dir_var.get(), portfolio)
+                # elif section == "VSPR":
+                #     return parse_VSPR(csv_path, self.output_dir_var.get(), portfolio)
                 else:
                     return (None, None, None, None, f"Unrecognized section: {section}")
         except Exception as e:
@@ -632,7 +632,7 @@ class DashboardUI(ctk.CTkFrame):
             "Boom": None,
             "BHB": None,
             "ACS": None,
-            "VSPR": None,
+            # "VSPR": None,
             "CV": [],
         }
 
@@ -641,7 +641,7 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_entry.delete(0, "end")
         self.bhb_entry.delete(0, "end")
         self.acs_entry.delete(0, "end")
-        self.VSPR_entry.delete(0, "end")
+        # self.VSPR_entry.delete(0, "end")
         self.clearview_listbox.delete(0, tk.END)
 
         # Disable buttons to prevent actions without valid inputs
@@ -649,7 +649,7 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_button.configure(state="disabled")
         self.bhb_button.configure(state="disabled")
         self.acs_button.configure(state="disabled")
-        self.VSPR_button.configure(state="disabled")
+        # self.VSPR_button.configure(state="disabled")
         self.clearview_button.configure(state="disabled")
         self.process_button.configure(state="disabled")
 
@@ -658,7 +658,7 @@ class DashboardUI(ctk.CTkFrame):
         self.boom_error_label.configure(text="")
         self.bhb_error_label.configure(text="")
         self.acs_error_label.configure(text="")
-        self.VSPR_error_label.configure(text="")
+        # self.VSPR_error_label.configure(text="")
         self.clearview_error_label.configure(text="")
         self.error_label.configure(text="")
 

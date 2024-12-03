@@ -1,3 +1,5 @@
+# app/core/data_processing/parsers/acs_vesper_parser.py
+
 from pathlib import Path
 import pandas as pd
 from typing import Tuple, Optional, Dict
@@ -68,13 +70,11 @@ class AcsVesperParser(BaseParser):
 
             df = self._df.copy()
             
-            # Get the latest week's columns
             latest_net_column = self.get_latest_net_column()
             latest_week_index = df.columns.get_loc(latest_net_column)
             latest_gross_column = df.columns[latest_week_index - 2]
             latest_fees_column = df.columns[latest_week_index - 1]
 
-            # Extract relevant columns for the latest week
             latest_week_df = df[[
                 "Advance ID",
                 "Merchant Name",
@@ -83,26 +83,14 @@ class AcsVesperParser(BaseParser):
                 latest_net_column
             ]].copy()
 
-            # Log initial row count
-            self.logger.info(f"Initial row count: {len(latest_week_df)}")
-
-            # Rename columns to match our standardized format
-            latest_week_df.columns = [
-                "Advance ID",
-                "Merchant Name",
-                "Gross Payment",
-                "Fees",
-                "Net"
-            ]
-
-            # Clean Advance IDs - remove any decimals and ensure string format
+            # Keep any prefix (like VC or AC) in the Advance ID
             def clean_advance_id(x):
                 try:
                     if pd.isna(x) or str(x).strip() == '':
                         return None
-                    # Keep any alphabetic prefix (like VC or AC)
+                    # Keep alphabetic prefix
                     prefix = ''.join(c for c in str(x) if c.isalpha())
-                    # Get the numeric part
+                    # Get numeric part
                     numeric = ''.join(c for c in str(x) if c.isdigit())
                     if not numeric:
                         return None
@@ -112,49 +100,41 @@ class AcsVesperParser(BaseParser):
 
             latest_week_df["Advance ID"] = latest_week_df["Advance ID"].apply(clean_advance_id)
             latest_week_df = latest_week_df[latest_week_df["Advance ID"].notna()]
-            
-            self.logger.info(f"Row count after ID cleaning: {len(latest_week_df)}")
 
-            # Convert amounts and fees to numeric
-            for col in ["Gross Payment", "Fees", "Net"]:
+            # Convert amounts
+            for col in [latest_gross_column, latest_fees_column, latest_net_column]:
                 latest_week_df[col] = pd.to_numeric(
-                    latest_week_df[col].astype(str).replace(r"[\$,]", "", regex=True),
+                    latest_week_df[col].astype(str).replace({
+                        r'[\$,]': '',  # Remove $ and commas
+                    }, regex=True),
                     errors='coerce'
                 ).fillna(0).round(2)
 
-            # Filter out rows where both gross and net are zero
+            # Filter rows with activity
             active_rows_mask = (
-                (latest_week_df["Gross Payment"] > 0) |
-                (latest_week_df["Net"] > 0)
+                (latest_week_df[latest_gross_column] != 0) |
+                (latest_week_df[latest_net_column] != 0)
             )
             latest_week_df = latest_week_df[active_rows_mask]
-            
-            self.logger.info(f"Row count after amount filtering: {len(latest_week_df)}")
 
-            # Create final DataFrame with standardized column names
             processed_df = pd.DataFrame({
                 "Advance ID": latest_week_df["Advance ID"],
                 "Merchant Name": latest_week_df["Merchant Name"],
-                "Sum of Syn Net Amount": latest_week_df["Net"],
-                "Sum of Syn Gross Amount": latest_week_df["Gross Payment"],
-                "Total Servicing Fee": (latest_week_df["Gross Payment"] - latest_week_df["Net"]).abs().round(2)
+                "Sum of Syn Gross Amount": latest_week_df[latest_gross_column],
+                "Total Servicing Fee": latest_week_df[latest_fees_column].abs(),
+                "Sum of Syn Net Amount": latest_week_df[latest_net_column]
             })
 
-            # Log some sample data and totals for verification
-            self.logger.info(f"Final row count: {len(processed_df)}")
-            self.logger.info(f"Total Gross: {processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
+            self.logger.info(f"Processed {len(processed_df)} rows")
+            self.logger.info(f"Sample Advance IDs: {processed_df['Advance ID'].head().tolist()}")
             self.logger.info(f"Total Net: {processed_df['Sum of Syn Net Amount'].sum():,.2f}")
-            self.logger.info(f"Total Fees: {processed_df['Total Servicing Fee'].sum():,.2f}")
-            
-            if len(processed_df) > 0:
-                self.logger.info("Sample of first row:")
-                self.logger.info(processed_df.iloc[0])
-            
+
             return processed_df
 
         except Exception as e:
             self.logger.error(f"Error processing ACS/Vesper data: {str(e)}")
             raise
+
     def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
         try:
             # Validate format

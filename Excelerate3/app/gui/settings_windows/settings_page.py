@@ -1,3 +1,5 @@
+# app/gui/settings_windows/settings_page.py
+
 from ..base_window import BasePage
 from managers.portfolio import Portfolio
 import customtkinter as ctk

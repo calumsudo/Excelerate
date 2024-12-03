@@ -1,4 +1,4 @@
-# core/data_processing/excel/workbook_manager.py
+# app/core/data_processing/excel/workbook_manager.py
 
 import openpyxl
 from pathlib import Path
@@ -147,10 +147,14 @@ class WorkbookManager:
                 advance_id = str(row["Advance ID"]).strip()
                 if advance_id == "Totals":  # Skip totals row
                     continue
+
+                net_value = row["Sum of Syn Net Amount"]
+                if net_value == 0:
+                    continue
                     
                 if advance_id in advance_id_map:
                     excel_row = advance_id_map[advance_id]
-                    worksheet[f"{net_rtr_col}{excel_row}"].value = row["Sum of Syn Net Amount"]
+                    worksheet[f"{net_rtr_col}{excel_row}"].value = net_value
                 else:
                     unmatched.append({
                         "sheet_name": sheet_name,

@@ -1,3 +1,5 @@
+# app/gui/base_window.py
+
 import customtkinter as ctk
 from abc import ABC, abstractmethod
 from managers.portfolio import Portfolio

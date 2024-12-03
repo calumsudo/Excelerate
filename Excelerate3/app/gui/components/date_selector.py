@@ -1,4 +1,5 @@
-# gui/components/date_selector.py
+# app/gui/components/date_selector.py
+
 import customtkinter as ctk
 from datetime import datetime
 from typing import Callable, Optional
