@@ -45,17 +45,19 @@ class KingsBoomParser(BaseParser):
             df['Advance ID'] = df['Advance ID'].apply(clean_advance_id)
             df = df[df['Advance ID'].notna()]
 
-            # Convert amount columns to numeric, handling currency formatting
+            # Convert amount columns to numeric, handling currency formatting and negative numbers
             for col in ['Payable Amt (Gross)', 'Servicing Fee $', 'Payable Amt (Net)']:
-                df[col] = pd.to_numeric(
-                    df[col].astype(str).replace(r'[\$,]', '', regex=True),
-                    errors='coerce'
-                ).fillna(0).round(2)
+                # Remove currency symbols and commas
+                df[col] = df[col].astype(str).replace(r'[\$,]', '', regex=True)
+                # Convert parentheses to negative signs
+                df[col] = df[col].str.replace(r'\((.*)\)', r'-\1', regex=True)
+                # Convert to numeric
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).round(2)
 
-            # Filter out rows where all amounts are zero
+            # Filter out rows where both amounts are zero
             non_zero_mask = (
-                (df['Payable Amt (Gross)'] > 0) | 
-                (df['Payable Amt (Net)'] > 0)
+                (df['Payable Amt (Gross)'] != 0) | 
+                (df['Payable Amt (Net)'] != 0)
             )
             df = df[non_zero_mask]
 

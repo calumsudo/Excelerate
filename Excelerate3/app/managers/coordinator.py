@@ -219,6 +219,10 @@ class PortfolioCoordinator:
 
             self.clear_processing_context()
             self.set_processing_context(portfolio, processing_date)
+
+            # Validate context
+            if not self._validate_context():
+                return False, None, "Processing context not properly set"
             
             if manual_funder:
                 funder = manual_funder
@@ -258,6 +262,8 @@ class PortfolioCoordinator:
             else:
                 # For other funders, process normally
                 parser = self._get_parser_for_funder(funder, file_path)
+                weekly_files = [file_path]
+                file_count = 1
                 
             if not parser:
                 return False, None, f"No parser available for funder {funder}"
