@@ -1,5 +1,3 @@
-# app/core/data_processing/parsers/efin_parser.py
-
 from pathlib import Path
 import pandas as pd
 from typing import Tuple, Optional, Dict
@@ -8,7 +6,7 @@ from .base_parser import BaseParser
 class EfinParser(BaseParser):
     def __init__(self, file_path: Path):
         super().__init__(file_path)
-        self.funder_name = None
+        self.funder_name = "EFIN"
         self.required_columns = [
             'Funding Date',
             'Advance ID', 
@@ -16,7 +14,8 @@ class EfinParser(BaseParser):
             'Advance Status',
             'Payable Amt (Gross)',
             'Servicing Fee $',
-            'Payable Amt (Net)'
+            'Payable Amt (Net)',
+            'Payable Status'  # Added this required column
         ]
         self.column_types = {
             'Advance ID': str,
@@ -50,16 +49,32 @@ class EfinParser(BaseParser):
     def read_csv(self) -> pd.DataFrame:
         """Read and perform initial processing of the CSV file"""
         try:
-            print("\nReading CSV file...")
-            # Read CSV file
-            df = pd.read_csv(self.file_path, encoding='utf-8')
-            print(f"Found {len(df)} rows in file")
+            self.logger.info("Reading EFIN CSV file...")
+            
+            # Try different encodings
+            encodings_to_try = ['utf-8', 'cp1252', 'iso-8859-1']
+            df = None
+            
+            for encoding in encodings_to_try:
+                try:
+                    df = pd.read_csv(self.file_path, encoding=encoding)
+                    break
+                except UnicodeDecodeError:
+                    continue
+                    
+            if df is None:
+                raise ValueError("Unable to read file with any supported encoding")
+                
+            self.logger.info(f"Found {len(df)} rows in file")
+            
+            # Convert Advance ID to string immediately
+            df['Advance ID'] = df['Advance ID'].astype(str)
             
             self._df = df
             return df
 
         except Exception as e:
-            print(f"\nError reading CSV: {str(e)}")
+            self.logger.error(f"Error reading CSV: {str(e)}")
             raise
 
     def process_data(self) -> pd.DataFrame:
@@ -71,14 +86,18 @@ class EfinParser(BaseParser):
             df = self._df.copy()
 
             # Filter for valid transactions
-            df = df[df['Advance Status'] == "Funded - In Repayment"]
+            valid_statuses = ['Funded - In Repayment', 'FUNDED - ISSUE CORRECTED', 'FUNDED - MPI']
+            status_mask = df['Advance Status'].str.upper().isin([s.upper() for s in valid_statuses])
+            df = df[status_mask]
+            
+            self.logger.info(f"Found {len(df)} rows with valid status")
+
+            # Clean Advance ID - ensure it's a string and remove any whitespace
+            df['Advance ID'] = df['Advance ID'].astype(str).str.strip()
 
             # Convert currency columns to numeric
             for col in ['Payable Amt (Gross)', 'Servicing Fee $', 'Payable Amt (Net)']:
-                df[col] = pd.to_numeric(
-                    df[col].astype(str).replace(r'[\$,]', '', regex=True),
-                    errors='coerce'
-                )
+                df[col] = df[col].apply(self.currency_to_float)
 
             # Group by Advance ID and Business Name to get totals
             grouped = df.groupby(['Advance ID', 'Business Name'], as_index=False).agg({
@@ -100,11 +119,11 @@ class EfinParser(BaseParser):
                 "Total Servicing Fee": grouped['Servicing Fee $'].abs()  # Ensure fees are positive
             })
 
-            # Log the totals for verification
-            self.logger.info("Final totals:")
-            self.logger.info(f"Total Net: {processed_df['Sum of Syn Net Amount'].sum():,.2f}")
-            self.logger.info(f"Total Fee: {processed_df['Total Servicing Fee'].sum():,.2f}")
-            self.logger.info(f"Total Gross: {processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
+            # Log processing details
+            self.logger.info(f"Processed {len(processed_df)} unique advances")
+            self.logger.info(f"Total Gross: ${processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
+            self.logger.info(f"Total Net: ${processed_df['Sum of Syn Net Amount'].sum():,.2f}")
+            self.logger.info(f"Total Fees: ${processed_df['Total Servicing Fee'].sum():,.2f}")
 
             return processed_df
 
@@ -148,6 +167,6 @@ class EfinParser(BaseParser):
             return pivot, total_gross, total_net, total_fee, None
 
         except Exception as e:
-            error_msg = f"Error processing {self.funder_name or 'EFIN'} file: {str(e)}"
+            error_msg = f"Error processing EFIN file: {str(e)}"
             self.logger.error(error_msg)
             return None, 0, 0, 0, error_msg
