@@ -143,13 +143,12 @@ class ClearViewParser(BaseParser):
 
             # Convert amounts and handle zeros
             for col in ['Syn Gross Amount', 'Syn Net Amount']:
-                # Remove currency symbols and convert to numeric
                 combined[col] = pd.to_numeric(
-                    combined[col].astype(str).replace('[\$,()]', '', regex=True).replace('', '0'),
+                    combined[col].astype(str).replace('[,$()]', '', regex=True).replace('', '0'),
                     errors='coerce'
                 ).fillna(0.0)
-                # Optional: Round to two decimal places
                 combined[col] = combined[col].round(2)
+
 
             # Exclude rows where both amounts are zero
             combined = combined[
