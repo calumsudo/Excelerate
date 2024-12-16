@@ -8,7 +8,7 @@ from utils.date_utils import format_date_for_file, get_most_recent_friday, forma
 import logging
 import pandas as pd
 
-from core.ml.funder_classifier import FunderClassifier
+from core.ml.funder_classifier import EnhancedFunderClassifier
 from core.data_processing.parsers.base_parser import BaseParser
 from core.data_processing.parsers.kings_boom_parser import KingsBoomParser
 from core.data_processing.parsers.efin_parser import EfinParser
@@ -34,7 +34,7 @@ class PortfolioCoordinator:
     
     def __init__(self, file_manager: 'PortfolioFileManager'):
         self.file_manager = file_manager
-        self.classifier = FunderClassifier()
+        self.classifier = EnhancedFunderClassifier(self.file_manager.db_path)
         self.logger = logging.getLogger(__name__)
 
         # Initialize context attributes
@@ -224,14 +224,19 @@ class PortfolioCoordinator:
             if not self._validate_context():
                 return False, None, "Processing context not properly set"
             
+            # Determine funder using manual override or classifier
             if manual_funder:
                 funder = manual_funder
+                classification_result = None
             else:
-                funder = self.classifier.get_best_match(file_path)
+                # Use enhanced classifier
+                classification_result = self.classifier.classify_funder(file_path)
+                if not classification_result or classification_result.confidence < 0.8:
+                    return False, None, (f"Unable to confidently identify funder. "
+                                      f"Reason: {classification_result.reason if classification_result else 'Unknown'}")
+                funder = classification_result.funder
 
-            if not funder:
-                return False, None, "Unable to identify funder from file format"
-                
+            # Validate funder belongs to portfolio
             if not PortfolioStructure.validate_portfolio_funder(portfolio, funder):
                 return False, None, f"Funder {funder} is not associated with portfolio {portfolio.value}"
 
@@ -264,7 +269,7 @@ class PortfolioCoordinator:
                 parser = self._get_parser_for_funder(funder, file_path)
                 weekly_files = [file_path]
                 file_count = 1
-                
+
             if not parser:
                 return False, None, f"No parser available for funder {funder}"
 
@@ -311,7 +316,8 @@ class PortfolioCoordinator:
                 additional_files=weekly_files[1:]
             )
 
-            return True, {
+            # Create result dictionary
+            result = {
                 "funder": funder,
                 "totals": {
                     "gross": total_gross,
@@ -321,7 +327,17 @@ class PortfolioCoordinator:
                 "unmatched_ids": unmatched,
                 "processing_date": processing_date.strftime("%B %d, %Y"),
                 "files_processed": file_count if funder == "ClearView" else 1
-            }, None
+            }
+
+            # Add classification details if available
+            if classification_result:
+                result.update({
+                    "classification_confidence": classification_result.confidence,
+                    "new_merchant_ids": len(classification_result.new_ids),
+                    "matched_merchant_ids": len(classification_result.matched_ids)
+                })
+
+            return True, result, None
 
         except Exception as e:
             self.logger.error(f"Error processing file: {str(e)}")

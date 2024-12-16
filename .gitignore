@@ -16,3 +16,4 @@ excelerate
 *.ipynb
 *.json
 *.DS_Store
+.venv

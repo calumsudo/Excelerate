@@ -8,6 +8,9 @@ from typing import Dict, List, Tuple, Optional
 import pandas as pd
 import logging
 from openpyxl.utils import get_column_letter
+import sqlite3
+
+from managers.portfolio import Portfolio
 
 class WorkbookManager:
     # Mapping between parser names and worksheet names
@@ -98,6 +101,110 @@ class WorkbookManager:
             start_col = get_column_letter(openpyxl.utils.column_index_from_string(total_col) + 1)
             for row in range(header_row + 1, worksheet.max_row + 1):
                 worksheet[f"{total_col}{row}"].value = f"=SUM({start_col}{row}:{net_rtr_col}{row})"
+
+    def populate_merchant_database(self, workbook_path: Path, portfolio: Portfolio) -> Dict[str, int]:
+        """
+        Scan workbook sheets and populate merchant_tracking database.
+        
+        Args:
+            workbook_path: Path to the Excel workbook
+            portfolio: Portfolio enum value - must be either ALDER or WHITE_RABBIT
+            
+        Returns:
+            Dict containing counts of merchants found per funder
+        """
+        try:
+            if not isinstance(portfolio, Portfolio):
+                raise ValueError("portfolio must be a Portfolio enum value")
+
+            workbook = openpyxl.load_workbook(workbook_path, read_only=True)
+            current_time = datetime.now().isoformat()
+            stats = {}
+            
+            # Process each funder sheet
+            for funder, sheet_name in self.SHEET_MAPPING.items():
+                if sheet_name not in workbook.sheetnames:
+                    self.logger.warning(f"Sheet {sheet_name} not found in workbook")
+                    continue
+                    
+                worksheet = workbook[sheet_name]
+                merchants_found = 0
+                
+                # Find the columns - header is always row 2 in template
+                header_row = 2
+                id_col = None
+                name_col = None
+                
+                for idx, cell in enumerate(worksheet[header_row], 1):
+                    if cell.value and cell.value in ["Advance ID", "Funder Advance ID"]:
+                        id_col = idx
+                    elif cell.value == "Merchant Name":
+                        name_col = idx
+                        
+                if not id_col:
+                    self.logger.error(f"Could not find Advance ID column in {sheet_name}")
+                    continue
+                
+                # Create database connection
+                db_path = self.file_manager.db_path
+                with sqlite3.connect(db_path) as conn:
+                    # Process each row
+                    for row in worksheet.iter_rows(min_row=header_row + 1):
+                        # Get advance ID from the correct column
+                        advance_id = row[id_col - 1].value
+                        if not advance_id or str(advance_id).strip() in ["", "-", "0"]:
+                            continue
+                            
+                        # Clean advance ID
+                        advance_id = str(advance_id).strip()
+                        
+                        # Get merchant name if available
+                        merchant_name = None
+                        if name_col:
+                            merchant_name = row[name_col - 1].value
+                            if merchant_name:
+                                merchant_name = str(merchant_name).strip()
+                        
+                        # Skip if no merchant name (likely empty row)
+                        if not merchant_name:
+                            continue
+
+                        # Debug logging
+                        self.logger.debug(f"Processing: ID={advance_id}, Name={merchant_name}, "
+                                        f"Funder={funder}, Portfolio={portfolio.value}")
+                        
+                        try:
+                            # Insert or update database
+                            conn.execute('''
+                                INSERT OR REPLACE INTO merchant_tracking 
+                                (advance_id, funder, merchant_name, portfolio, first_seen_date, last_updated)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            ''', (
+                                advance_id,
+                                funder,
+                                merchant_name,
+                                portfolio.value,  # Explicitly use portfolio.value
+                                current_time,
+                                current_time
+                            ))
+                            
+                            merchants_found += 1
+                        except sqlite3.Error as e:
+                            self.logger.error(f"Database error for merchant {merchant_name}: {str(e)}")
+                            raise
+                        
+                stats[funder] = merchants_found
+                self.logger.info(f"Found {merchants_found} merchants in {sheet_name}")
+                
+            # Log total merchants found
+            total_merchants = sum(stats.values())
+            self.logger.info(f"Total merchants added to database for {portfolio.value}: {total_merchants}")
+            
+            return stats
+            
+        except Exception as e:
+            self.logger.error(f"Error populating merchant database: {str(e)}")
+            raise
 
     def update_workbook(self, 
                        portfolio_path: Path,

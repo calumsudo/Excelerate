@@ -8,3 +8,4 @@ pyperclip==1.8.2
 reportlab==4.2.0
 tkcalendar==1.6.1
 wheel==0.43.0
+tkinterdnd2-0.4.2

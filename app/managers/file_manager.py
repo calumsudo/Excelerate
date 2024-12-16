@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional, List, Union, Tuple
 from dataclasses import dataclass, asdict
 from .portfolio import Portfolio, PortfolioStructure
+from .database_manager import DatabaseManager
 
 @dataclass
 class UserPreferences:
@@ -32,7 +33,8 @@ class PortfolioFileManager:
         self._setup_directories()
         
         # Setup database
-        self._setup_database()
+        self.db_manager = DatabaseManager(self.db_path)
+        #self._setup_database()
         
         # Setup logging
         self.logger = self._setup_logging()
@@ -69,101 +71,6 @@ class PortfolioFileManager:
                 (uploads_dir / funder).mkdir(exist_ok=True)
                 (outputs_dir / funder).mkdir(exist_ok=True)
 
-    def _setup_database(self):
-        """Initialize SQLite database for file tracking"""
-        with sqlite3.connect(self.db_path) as conn:
-            # Create uploaded_files table with additional columns
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS uploaded_files (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    original_filename TEXT,
-                    stored_filename TEXT,
-                    portfolio TEXT,
-                    funder TEXT,
-                    upload_date TEXT,
-                    processing_date TEXT,
-                    processing_status TEXT,
-                    error_message TEXT,
-                    file_path TEXT,
-                    updated_at TEXT,
-                    is_additional BOOLEAN DEFAULT FALSE,
-                    primary_file_id INTEGER,
-                    FOREIGN KEY (primary_file_id) REFERENCES uploaded_files (id)
-                )
-            ''')
-            
-            # Create pivot_tables table
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS pivot_tables (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    source_file_id INTEGER,
-                    stored_filename TEXT,
-                    creation_date TEXT,
-                    processing_date TEXT,
-                    portfolio TEXT,
-                    funder TEXT,
-                    file_path TEXT,
-                    FOREIGN KEY (source_file_id) REFERENCES uploaded_files (id)
-                )
-            ''')
-            
-            # Create processing_totals table
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS processing_totals (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    file_id INTEGER,
-                    gross_total REAL,
-                    net_total REAL,
-                    fee_total REAL,
-                    processing_date TEXT,
-                    created_at TEXT,
-                    FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
-                )
-            ''')
-            
-            conn.commit()
-
-
-    def _migrate_database(self):
-        """Run any necessary database migrations"""
-        try:
-            with sqlite3.connect(self.db_path) as conn:
-                # Check for processing_totals table
-                cursor = conn.execute("""
-                    SELECT name 
-                    FROM sqlite_master 
-                    WHERE type='table' AND name='processing_totals'
-                """)
-                if not cursor.fetchone():
-                    # Create processing_totals table if it doesn't exist
-                    conn.execute('''
-                        CREATE TABLE IF NOT EXISTS processing_totals (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            file_id INTEGER,
-                            gross_total REAL,
-                            net_total REAL,
-                            fee_total REAL,
-                            processing_date TEXT,
-                            created_at TEXT,
-                            FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
-                        )
-                    ''')
-                
-                # Check if new columns exist in uploaded_files
-                cursor = conn.execute("PRAGMA table_info(uploaded_files)")
-                columns = [row[1] for row in cursor.fetchall()]
-                
-                if 'is_additional' not in columns:
-                    conn.execute("ALTER TABLE uploaded_files ADD COLUMN is_additional BOOLEAN DEFAULT FALSE")
-                    
-                if 'primary_file_id' not in columns:
-                    conn.execute("ALTER TABLE uploaded_files ADD COLUMN primary_file_id INTEGER REFERENCES uploaded_files(id)")
-                
-                conn.commit()
-                
-        except Exception as e:
-            self.logger.error(f"Error during database migration: {str(e)}")
-            raise
 
     def _setup_logging(self) -> logging.Logger:
         """Configure logging with rotation and formatting"""
@@ -650,7 +557,7 @@ class PortfolioFileManager:
         
 
     def save_portfolio_workbook(self, portfolio: Portfolio, workbook_path: Path) -> None:
-        """Save a portfolio's Excel workbook."""
+        """Save a portfolio's Excel workbook and populate merchant database."""
         try:
             # Create portfolio config directory if it doesn't exist
             config_dir = self.base_dir / portfolio.value / "config"
@@ -661,8 +568,20 @@ class PortfolioFileManager:
             new_path = config_dir / f"{portfolio.value.lower()}_portfolio.xlsx"
             shutil.copy2(workbook_path, new_path)
             
-            self.logger.info(f"Saved {portfolio.value} portfolio workbook to {new_path}")
+            # Initialize WorkbookManager
+            from core.data_processing.excel.workbook_manager import WorkbookManager
+            workbook_manager = WorkbookManager(self)
             
+            # Populate merchant database
+            stats = workbook_manager.populate_merchant_database(new_path, portfolio)
+            
+            # Log results
+            total_merchants = sum(stats.values())
+            self.logger.info(f"Saved {portfolio.value} portfolio workbook to {new_path}")
+            self.logger.info(f"Added {total_merchants} merchants to tracking database")
+            for funder, count in stats.items():
+                self.logger.info(f"- {funder}: {count} merchants")
+                
         except Exception as e:
             self.logger.error(f"Error saving portfolio workbook: {str(e)}")
             raise
