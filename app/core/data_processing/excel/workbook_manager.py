@@ -10,7 +10,7 @@ import logging
 from openpyxl.utils import get_column_letter
 import sqlite3
 
-from managers.portfolio import Portfolio
+from managers.portfolio import Portfolio, PortfolioStructure
 
 class WorkbookManager:
     # Mapping between parser names and worksheet names
@@ -114,8 +114,12 @@ class WorkbookManager:
             Dict containing counts of merchants found per funder
         """
         try:
+            # Validate portfolio is a correct enum value
             if not isinstance(portfolio, Portfolio):
                 raise ValueError("portfolio must be a Portfolio enum value")
+
+            # Get valid funders for this portfolio
+            valid_funders = PortfolioStructure.get_portfolio_funders(portfolio)
 
             workbook = openpyxl.load_workbook(workbook_path, read_only=True)
             current_time = datetime.now().isoformat()
@@ -123,6 +127,11 @@ class WorkbookManager:
             
             # Process each funder sheet
             for funder, sheet_name in self.SHEET_MAPPING.items():
+                # Skip if funder is not valid for this portfolio
+                if funder not in valid_funders:
+                    self.logger.info(f"Skipping {funder} - not valid for {portfolio.value} portfolio")
+                    continue
+
                 if sheet_name not in workbook.sheetnames:
                     self.logger.warning(f"Sheet {sheet_name} not found in workbook")
                     continue
@@ -169,12 +178,8 @@ class WorkbookManager:
                         if not merchant_name:
                             continue
 
-                        # Debug logging
-                        self.logger.debug(f"Processing: ID={advance_id}, Name={merchant_name}, "
-                                        f"Funder={funder}, Portfolio={portfolio.value}")
-                        
                         try:
-                            # Insert or update database
+                            # Insert or update database with validated portfolio value
                             conn.execute('''
                                 INSERT OR REPLACE INTO merchant_tracking 
                                 (advance_id, funder, merchant_name, portfolio, first_seen_date, last_updated)
@@ -183,7 +188,7 @@ class WorkbookManager:
                                 advance_id,
                                 funder,
                                 merchant_name,
-                                portfolio.value,  # Explicitly use portfolio.value
+                                portfolio.value,  # Using enum value directly
                                 current_time,
                                 current_time
                             ))
