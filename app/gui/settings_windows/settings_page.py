@@ -4,24 +4,23 @@ from ..base_window import BasePage
 from managers.portfolio import Portfolio
 import customtkinter as ctk
 
+
 class SettingsPage(BasePage):
     def get_portfolio(self) -> Portfolio:
         return None
-    
+
     def setup_ui(self):
         # Configure grid
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(1, weight=1)
-        
+
         # Header
         header = ctk.CTkFrame(self)
         header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-        
-        ctk.CTkLabel(
-            header,
-            text="Settings",
-            font=("Helvetica", 24, "bold")
-        ).pack(side="left", padx=10)
+
+        ctk.CTkLabel(header, text="Settings", font=("Helvetica", 24, "bold")).pack(
+            side="left", padx=10
+        )
 
         # Sidebar - remove width parameter and add grid configuration
         sidebar = ctk.CTkFrame(self)
@@ -44,14 +43,14 @@ class SettingsPage(BasePage):
             "corner_radius": 0,
             "fg_color": "transparent",
             "text_color": ("gray10", "gray90"),
-            "hover_color": ("gray75", "gray28")
+            "hover_color": ("gray75", "gray28"),
         }
 
         buttons = [
             ("appearance", "Appearance"),
             ("storage", "Storage"),
             ("auth", "Authentication"),
-            ("about", "About")
+            ("about", "About"),
         ]
 
         self.sidebar_buttons = {}
@@ -60,7 +59,7 @@ class SettingsPage(BasePage):
                 sidebar,
                 text=text,
                 command=lambda p=panel_id: self.show_panel(p),
-                **button_style
+                **button_style,
             )
             btn.grid(row=i, column=0, sticky="nsew")
             self.sidebar_buttons[panel_id] = btn
@@ -70,21 +69,21 @@ class SettingsPage(BasePage):
             "appearance": self.create_appearance_panel(),
             "storage": self.create_storage_panel(),
             "auth": self.create_auth_panel(),
-            "about": self.create_about_panel()
+            "about": self.create_about_panel(),
         }
 
     def create_appearance_panel(self):
         panel = ctk.CTkFrame(self.content)
         panel.grid_columnconfigure(0, weight=1)
-        
-        ctk.CTkLabel(
-            panel,
-            text="Theme Mode",
-            font=("Helvetica", 16, "bold")
-        ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
-        
-        self.theme_var = ctk.StringVar(value=self.controller.file_manager.preferences.theme_mode)
-        
+
+        ctk.CTkLabel(panel, text="Theme Mode", font=("Helvetica", 16, "bold")).grid(
+            row=0, column=0, padx=20, pady=(20, 10), sticky="w"
+        )
+
+        self.theme_var = ctk.StringVar(
+            value=self.controller.file_manager.preferences.theme_mode
+        )
+
         themes = ["System", "Light", "Dark"]
         for i, theme in enumerate(themes):
             ctk.CTkRadioButton(
@@ -92,94 +91,85 @@ class SettingsPage(BasePage):
                 text=theme,
                 variable=self.theme_var,
                 value=theme,
-                command=self.apply_theme
-            ).grid(row=i+1, column=0, padx=40, pady=5, sticky="w")
-            
+                command=self.apply_theme,
+            ).grid(row=i + 1, column=0, padx=40, pady=5, sticky="w")
+
         return panel
 
     def create_storage_panel(self):
         panel = ctk.CTkFrame(self.content)
         panel.grid_columnconfigure(0, weight=1)
-        
+
         ctk.CTkLabel(
-            panel,
-            text="Storage Location",
-            font=("Helvetica", 16, "bold")
+            panel, text="Storage Location", font=("Helvetica", 16, "bold")
         ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
-        
+
         storage_path = ctk.CTkEntry(panel, width=300)
         storage_path.insert(0, str(self.controller.file_manager.base_dir))
         storage_path.configure(state="readonly")
         storage_path.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
-        
-        ctk.CTkLabel(
-            panel,
-            text="Recent Files",
-            font=("Helvetica", 16, "bold")
-        ).grid(row=2, column=0, padx=20, pady=(20, 10), sticky="w")
-        
+
+        ctk.CTkLabel(panel, text="Recent Files", font=("Helvetica", 16, "bold")).grid(
+            row=2, column=0, padx=20, pady=(20, 10), sticky="w"
+        )
+
         ctk.CTkButton(
-            panel,
-            text="Clear Recent Files",
-            command=self.clear_recent_files
+            panel, text="Clear Recent Files", command=self.clear_recent_files
         ).grid(row=3, column=0, padx=20, pady=(0, 20), sticky="w")
-        
+
         return panel
 
     def create_auth_panel(self):
         panel = ctk.CTkFrame(self.content)
         panel.grid_columnconfigure(0, weight=1)
-        
+
         ctk.CTkLabel(
-            panel,
-            text="Authentication Token",
-            font=("Helvetica", 16, "bold")
+            panel, text="Authentication Token", font=("Helvetica", 16, "bold")
         ).grid(row=0, column=0, padx=20, pady=(20, 10), sticky="w")
-        
+
         self.auth_token = ctk.CTkEntry(panel, width=300, show="•")
         if self.controller.file_manager.preferences.auth_token:
-            self.auth_token.insert(0, self.controller.file_manager.preferences.auth_token)
+            self.auth_token.insert(
+                0, self.controller.file_manager.preferences.auth_token
+            )
         self.auth_token.grid(row=1, column=0, padx=20, pady=(0, 10), sticky="ew")
-        
-        ctk.CTkButton(
-            panel,
-            text="Save Token",
-            command=self.save_auth_token
-        ).grid(row=2, column=0, padx=20, pady=(0, 20), sticky="w")
-        
+
+        ctk.CTkButton(panel, text="Save Token", command=self.save_auth_token).grid(
+            row=2, column=0, padx=20, pady=(0, 20), sticky="w"
+        )
+
         return panel
 
     def create_about_panel(self):
         panel = ctk.CTkFrame(self.content)
         panel.grid_columnconfigure(0, weight=1)
-        
-        ctk.CTkLabel(
-            panel,
-            text="Excelerate",
-            font=("Helvetica", 24, "bold")
-        ).grid(row=0, column=0, padx=20, pady=(20, 5))
-        
-        ctk.CTkLabel(
-            panel,
-            text="Version 1.0.0"
-        ).grid(row=1, column=0, padx=20, pady=(0, 20))
-        
+
+        ctk.CTkLabel(panel, text="Excelerate", font=("Helvetica", 24, "bold")).grid(
+            row=0, column=0, padx=20, pady=(20, 5)
+        )
+
+        ctk.CTkLabel(panel, text="Version 1.0.0").grid(
+            row=1, column=0, padx=20, pady=(0, 20)
+        )
+
         ctk.CTkLabel(
             panel,
             text="A portfolio management and analysis tool\nfor processing syndicate data.",
-            justify="center"
+            justify="center",
         ).grid(row=2, column=0, padx=20, pady=(0, 20))
-        
+
         return panel
 
     def show_panel(self, panel_name: str):
         for panel in self.panels.values():
             panel.grid_remove()
-            
+
         self.panels[panel_name].grid(row=0, column=0, sticky="nsew")
-        
+
         for name, button in self.sidebar_buttons.items():
-            button.configure(fg_color="transparent" if name != panel_name else ("gray75", "gray28"))
+            button.configure(
+                fg_color="transparent" if name != panel_name else ("gray75", "gray28")
+            )
 
     def apply_theme(self):
         new_theme = self.theme_var.get()
@@ -198,10 +188,6 @@ class SettingsPage(BasePage):
         self.show_temp_message("auth", "Token saved!")
 
     def show_temp_message(self, panel_name: str, message: str):
-        label = ctk.CTkLabel(
-            self.panels[panel_name],
-            text=message,
-            text_color="green"
-        )
+        label = ctk.CTkLabel(self.panels[panel_name], text=message, text_color="green")
         label.grid(row=10, column=0, padx=20, pady=(0, 20))
         self.after(2000, label.destroy)

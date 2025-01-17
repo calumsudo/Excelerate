@@ -1,30 +1,31 @@
 from pathlib import Path
 import pandas as pd
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 from .base_parser import BaseParser
+
 
 class EfinParser(BaseParser):
     def __init__(self, file_path: Path):
         super().__init__(file_path)
         self.funder_name = "EFIN"
         self.required_columns = [
-            'Funding Date',
-            'Advance ID', 
-            'Business Name',
-            'Advance Status',
-            'Payable Amt (Gross)',
-            'Servicing Fee $',
-            'Payable Amt (Net)',
-            'Payable Status'  # Added this required column
+            "Funding Date",
+            "Advance ID",
+            "Business Name",
+            "Advance Status",
+            "Payable Amt (Gross)",
+            "Servicing Fee $",
+            "Payable Amt (Net)",
+            "Payable Status",  # Added this required column
         ]
         self.column_types = {
-            'Advance ID': str,
-            'Business Name': str,
-            'Payable Amt (Gross)': float,
-            'Servicing Fee $': float,
-            'Payable Amt (Net)': float
+            "Advance ID": str,
+            "Business Name": str,
+            "Payable Amt (Gross)": float,
+            "Servicing Fee $": float,
+            "Payable Amt (Net)": float,
         }
-        
+
     def currency_to_float(self, value: any) -> float:
         """Convert currency string to float."""
         if pd.isna(value):
@@ -50,26 +51,26 @@ class EfinParser(BaseParser):
         """Read and perform initial processing of the CSV file"""
         try:
             self.logger.info("Reading EFIN CSV file...")
-            
+
             # Try different encodings
-            encodings_to_try = ['utf-8', 'cp1252', 'iso-8859-1']
+            encodings_to_try = ["utf-8", "cp1252", "iso-8859-1"]
             df = None
-            
+
             for encoding in encodings_to_try:
                 try:
                     df = pd.read_csv(self.file_path, encoding=encoding)
                     break
                 except UnicodeDecodeError:
                     continue
-                    
+
             if df is None:
                 raise ValueError("Unable to read file with any supported encoding")
-                
+
             self.logger.info(f"Found {len(df)} rows in file")
-            
+
             # Convert Advance ID to string immediately
-            df['Advance ID'] = df['Advance ID'].astype(str)
-            
+            df["Advance ID"] = df["Advance ID"].astype(str)
+
             self._df = df
             return df
 
@@ -86,44 +87,64 @@ class EfinParser(BaseParser):
             df = self._df.copy()
 
             # Filter for valid transactions
-            valid_statuses = ['Funded - In Repayment', 'FUNDED - ISSUE CORRECTED', 'FUNDED - MPI']
-            status_mask = df['Advance Status'].str.upper().isin([s.upper() for s in valid_statuses])
+            valid_statuses = [
+                "Funded - In Repayment",
+                "FUNDED - ISSUE CORRECTED",
+                "FUNDED - MPI",
+            ]
+            status_mask = (
+                df["Advance Status"]
+                .str.upper()
+                .isin([s.upper() for s in valid_statuses])
+            )
             df = df[status_mask]
-            
+
             self.logger.info(f"Found {len(df)} rows with valid status")
 
             # Clean Advance ID - ensure it's a string and remove any whitespace
-            df['Advance ID'] = df['Advance ID'].astype(str).str.strip()
+            df["Advance ID"] = df["Advance ID"].astype(str).str.strip()
 
             # Convert currency columns to numeric
-            for col in ['Payable Amt (Gross)', 'Servicing Fee $', 'Payable Amt (Net)']:
+            for col in ["Payable Amt (Gross)", "Servicing Fee $", "Payable Amt (Net)"]:
                 df[col] = df[col].apply(self.currency_to_float)
 
             # Group by Advance ID and Business Name to get totals
-            grouped = df.groupby(['Advance ID', 'Business Name'], as_index=False).agg({
-                'Payable Amt (Net)': 'sum',
-                'Servicing Fee $': 'sum',
-                'Payable Amt (Gross)': 'sum'
-            })
+            grouped = df.groupby(["Advance ID", "Business Name"], as_index=False).agg(
+                {
+                    "Payable Amt (Net)": "sum",
+                    "Servicing Fee $": "sum",
+                    "Payable Amt (Gross)": "sum",
+                }
+            )
 
             # Round all amounts to 2 decimal places
-            for col in ['Payable Amt (Net)', 'Servicing Fee $', 'Payable Amt (Gross)']:
+            for col in ["Payable Amt (Net)", "Servicing Fee $", "Payable Amt (Gross)"]:
                 grouped[col] = grouped[col].round(2)
 
             # Create standardized DataFrame with correct column mapping
-            processed_df = pd.DataFrame({
-                "Advance ID": grouped['Advance ID'],
-                "Merchant Name": grouped['Business Name'],
-                "Sum of Syn Net Amount": grouped['Payable Amt (Net)'],
-                "Sum of Syn Gross Amount": grouped['Payable Amt (Gross)'],
-                "Total Servicing Fee": grouped['Servicing Fee $'].abs()  # Ensure fees are positive
-            })
+            processed_df = pd.DataFrame(
+                {
+                    "Advance ID": grouped["Advance ID"],
+                    "Merchant Name": grouped["Business Name"],
+                    "Sum of Syn Net Amount": grouped["Payable Amt (Net)"],
+                    "Sum of Syn Gross Amount": grouped["Payable Amt (Gross)"],
+                    "Total Servicing Fee": grouped[
+                        "Servicing Fee $"
+                    ].abs(),  # Ensure fees are positive
+                }
+            )
 
             # Log processing details
             self.logger.info(f"Processed {len(processed_df)} unique advances")
-            self.logger.info(f"Total Gross: ${processed_df['Sum of Syn Gross Amount'].sum():,.2f}")
-            self.logger.info(f"Total Net: ${processed_df['Sum of Syn Net Amount'].sum():,.2f}")
-            self.logger.info(f"Total Fees: ${processed_df['Total Servicing Fee'].sum():,.2f}")
+            self.logger.info(
+                f"Total Gross: ${processed_df['Sum of Syn Gross Amount'].sum():,.2f}"
+            )
+            self.logger.info(
+                f"Total Net: ${processed_df['Sum of Syn Net Amount'].sum():,.2f}"
+            )
+            self.logger.info(
+                f"Total Fees: ${processed_df['Total Servicing Fee'].sum():,.2f}"
+            )
 
             return processed_df
 
@@ -161,7 +182,7 @@ class EfinParser(BaseParser):
                 gross_col="Sum of Syn Gross Amount",
                 net_col="Sum of Syn Net Amount",
                 fee_col="Total Servicing Fee",
-                index=["Advance ID", "Merchant Name"]
+                index=["Advance ID", "Merchant Name"],
             )
 
             return pivot, total_gross, total_net, total_fee, None

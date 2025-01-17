@@ -1,5 +1,4 @@
 # app/gui/file_explorer.py
-
 import customtkinter as ctk
 from pathlib import Path
 import pandas as pd
@@ -7,10 +6,10 @@ from tkinter import ttk
 import shutil
 from .base_window import BasePage
 from managers.portfolio import Portfolio
-import os
 from datetime import datetime
 import sqlite3
-from typing import List, Dict, Optional
+from typing import List, Dict
+
 
 class FileFilter:
     def __init__(self):
@@ -19,6 +18,7 @@ class FileFilter:
         self.file_type = "All"  # "Uploaded", "Pivot", "All"
         self.date_range = None  # Tuple of (start_date, end_date)
         self.search_text = ""
+
 
 class FileExplorer(BasePage):
     def get_portfolio(self) -> Portfolio:
@@ -32,12 +32,10 @@ class FileExplorer(BasePage):
         # Header
         header = ctk.CTkFrame(self)
         header.grid(row=0, column=0, columnspan=2, sticky="ew", padx=10, pady=5)
-        
-        ctk.CTkLabel(
-            header,
-            text="File Explorer",
-            font=("Helvetica", 24, "bold")
-        ).pack(side="left", padx=10)
+
+        ctk.CTkLabel(header, text="File Explorer", font=("Helvetica", 24, "bold")).pack(
+            side="left", padx=10
+        )
 
         # Create Filter Section
         filter_frame = ctk.CTkFrame(self)
@@ -53,23 +51,20 @@ class FileExplorer(BasePage):
         # Search bar
         search_frame = ctk.CTkFrame(content)
         search_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
-        
+
         self.search_var = ctk.StringVar()
         self.search_var.trace("w", self.on_search_changed)
-        
+
         search_entry = ctk.CTkEntry(
             search_frame,
             placeholder_text="Search files...",
             textvariable=self.search_var,
-            width=300
+            width=300,
         )
         search_entry.pack(side="left", padx=5, fill="x", expand=True)
 
         refresh_btn = ctk.CTkButton(
-            search_frame,
-            text="🔄 Refresh",
-            width=100,
-            command=self.refresh_files
+            search_frame, text="🔄 Refresh", width=100, command=self.refresh_files
         )
         refresh_btn.pack(side="right", padx=5)
 
@@ -82,14 +77,26 @@ class FileExplorer(BasePage):
         # Create file list with columns
         columns = ("Filename", "Portfolio", "Funder", "Type", "Date", "Status")
         self.file_list = ttk.Treeview(list_frame, columns=columns, show="headings")
-        
+
         # Configure columns
-        self.file_list.heading("Filename", text="Filename", command=lambda: self.sort_column("Filename"))
-        self.file_list.heading("Portfolio", text="Portfolio", command=lambda: self.sort_column("Portfolio"))
-        self.file_list.heading("Funder", text="Funder", command=lambda: self.sort_column("Funder"))
-        self.file_list.heading("Type", text="Type", command=lambda: self.sort_column("Type"))
-        self.file_list.heading("Date", text="Date", command=lambda: self.sort_column("Date"))
-        self.file_list.heading("Status", text="Status", command=lambda: self.sort_column("Status"))
+        self.file_list.heading(
+            "Filename", text="Filename", command=lambda: self.sort_column("Filename")
+        )
+        self.file_list.heading(
+            "Portfolio", text="Portfolio", command=lambda: self.sort_column("Portfolio")
+        )
+        self.file_list.heading(
+            "Funder", text="Funder", command=lambda: self.sort_column("Funder")
+        )
+        self.file_list.heading(
+            "Type", text="Type", command=lambda: self.sort_column("Type")
+        )
+        self.file_list.heading(
+            "Date", text="Date", command=lambda: self.sort_column("Date")
+        )
+        self.file_list.heading(
+            "Status", text="Status", command=lambda: self.sort_column("Status")
+        )
 
         # Set column widths
         self.file_list.column("Filename", width=300)
@@ -102,12 +109,18 @@ class FileExplorer(BasePage):
         self.file_list.grid(row=0, column=0, sticky="nsew")
 
         # Add scrollbars
-        y_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=self.file_list.yview)
+        y_scroll = ttk.Scrollbar(
+            list_frame, orient="vertical", command=self.file_list.yview
+        )
         y_scroll.grid(row=0, column=1, sticky="ns")
-        x_scroll = ttk.Scrollbar(list_frame, orient="horizontal", command=self.file_list.xview)
+        x_scroll = ttk.Scrollbar(
+            list_frame, orient="horizontal", command=self.file_list.xview
+        )
         x_scroll.grid(row=1, column=0, sticky="ew")
 
-        self.file_list.configure(yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set)
+        self.file_list.configure(
+            yscrollcommand=y_scroll.set, xscrollcommand=x_scroll.set
+        )
 
         # Preview frame
         self.preview_frame = ctk.CTkFrame(content)
@@ -120,9 +133,7 @@ class FileExplorer(BasePage):
         preview_header.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
         self.file_label = ctk.CTkLabel(
-            preview_header,
-            text="No file selected",
-            font=("Helvetica", 16)
+            preview_header, text="No file selected", font=("Helvetica", 16)
         )
         self.file_label.pack(side="left", padx=10)
 
@@ -131,7 +142,7 @@ class FileExplorer(BasePage):
             preview_header,
             text="Export File",
             command=self.export_file,
-            state="disabled"
+            state="disabled",
         )
         self.export_button.pack(side="right", padx=10)
 
@@ -140,16 +151,22 @@ class FileExplorer(BasePage):
         self.preview_table.grid(row=1, column=0, sticky="nsew")
 
         # Preview scrollbars
-        preview_y_scroll = ttk.Scrollbar(self.preview_frame, orient="vertical", command=self.preview_table.yview)
+        preview_y_scroll = ttk.Scrollbar(
+            self.preview_frame, orient="vertical", command=self.preview_table.yview
+        )
         preview_y_scroll.grid(row=1, column=1, sticky="ns")
-        preview_x_scroll = ttk.Scrollbar(self.preview_frame, orient="horizontal", command=self.preview_table.xview)
+        preview_x_scroll = ttk.Scrollbar(
+            self.preview_frame, orient="horizontal", command=self.preview_table.xview
+        )
         preview_x_scroll.grid(row=2, column=0, sticky="ew")
 
-        self.preview_table.configure(yscrollcommand=preview_y_scroll.set, xscrollcommand=preview_x_scroll.set)
+        self.preview_table.configure(
+            yscrollcommand=preview_y_scroll.set, xscrollcommand=preview_x_scroll.set
+        )
 
         # Initialize filter state
         self.filter_state = FileFilter()
-        
+
         # Bind selection event
         self.file_list.bind("<<TreeviewSelect>>", self.on_file_selected)
 
@@ -159,71 +176,70 @@ class FileExplorer(BasePage):
     def setup_filter_section(self, frame):
         """Setup the filter sidebar"""
         frame.grid_columnconfigure(0, weight=1)
-        
+
         # Portfolio Filter
-        ctk.CTkLabel(frame, text="Portfolio", font=("Helvetica", 12, "bold")).pack(pady=(10,5), padx=10)
+        ctk.CTkLabel(frame, text="Portfolio", font=("Helvetica", 12, "bold")).pack(
+            pady=(10, 5), padx=10
+        )
         self.portfolio_var = ctk.StringVar(value="All")
         portfolio_menu = ctk.CTkOptionMenu(
             frame,
             values=["All"] + [p.value for p in Portfolio],
             variable=self.portfolio_var,
-            command=self.apply_filters
+            command=self.apply_filters,
         )
         portfolio_menu.pack(pady=5, padx=10, fill="x")
 
         # Funder Filter
-        ctk.CTkLabel(frame, text="Funder", font=("Helvetica", 12, "bold")).pack(pady=(10,5), padx=10)
+        ctk.CTkLabel(frame, text="Funder", font=("Helvetica", 12, "bold")).pack(
+            pady=(10, 5), padx=10
+        )
         self.funder_var = ctk.StringVar(value="All")
         self.funder_menu = ctk.CTkOptionMenu(
             frame,
             values=self.get_available_funders(),
             variable=self.funder_var,
-            command=self.apply_filters
+            command=self.apply_filters,
         )
         self.funder_menu.pack(pady=5, padx=10, fill="x")
 
         # File Type Filter
-        ctk.CTkLabel(frame, text="File Type", font=("Helvetica", 12, "bold")).pack(pady=(10,5), padx=10)
+        ctk.CTkLabel(frame, text="File Type", font=("Helvetica", 12, "bold")).pack(
+            pady=(10, 5), padx=10
+        )
         self.file_type_var = ctk.StringVar(value="All")
         file_type_menu = ctk.CTkOptionMenu(
             frame,
             values=["All", "Uploaded", "Pivot Tables"],
             variable=self.file_type_var,
-            command=self.apply_filters
+            command=self.apply_filters,
         )
         file_type_menu.pack(pady=5, padx=10, fill="x")
 
         # Date Range Filter
-        ctk.CTkLabel(frame, text="Date Range", font=("Helvetica", 12, "bold")).pack(pady=(10,5), padx=10)
-        
+        ctk.CTkLabel(frame, text="Date Range", font=("Helvetica", 12, "bold")).pack(
+            pady=(10, 5), padx=10
+        )
+
         # Start Date
         self.start_date = ctk.CTkEntry(
-            frame,
-            placeholder_text="Start Date (YYYY-MM-DD)"
+            frame, placeholder_text="Start Date (YYYY-MM-DD)"
         )
         self.start_date.pack(pady=5, padx=10, fill="x")
-        
+
         # End Date
-        self.end_date = ctk.CTkEntry(
-            frame,
-            placeholder_text="End Date (YYYY-MM-DD)"
-        )
+        self.end_date = ctk.CTkEntry(frame, placeholder_text="End Date (YYYY-MM-DD)")
         self.end_date.pack(pady=5, padx=10, fill="x")
 
         # Apply Date Filter Button
-        ctk.CTkButton(
-            frame,
-            text="Apply Date Filter",
-            command=self.apply_filters
-        ).pack(pady=10, padx=10, fill="x")
+        ctk.CTkButton(frame, text="Apply Date Filter", command=self.apply_filters).pack(
+            pady=10, padx=10, fill="x"
+        )
 
         # Reset Filters Button
         ctk.CTkButton(
-            frame,
-            text="Reset Filters",
-            command=self.reset_filters,
-            fg_color="grey"
-        ).pack(pady=(20,10), padx=10, fill="x")
+            frame, text="Reset Filters", command=self.reset_filters, fg_color="grey"
+        ).pack(pady=(20, 10), padx=10, fill="x")
 
     def get_available_funders(self) -> List[str]:
         """Get unique funders from database"""
@@ -241,10 +257,18 @@ class FileExplorer(BasePage):
         self.filter_state.portfolio = self.portfolio_var.get()
         self.filter_state.funder = self.funder_var.get()
         self.filter_state.file_type = self.file_type_var.get()
-        
+
         try:
-            start = datetime.strptime(self.start_date.get(), "%Y-%m-%d") if self.start_date.get() else None
-            end = datetime.strptime(self.end_date.get(), "%Y-%m-%d") if self.end_date.get() else None
+            start = (
+                datetime.strptime(self.start_date.get(), "%Y-%m-%d")
+                if self.start_date.get()
+                else None
+            )
+            end = (
+                datetime.strptime(self.end_date.get(), "%Y-%m-%d")
+                if self.end_date.get()
+                else None
+            )
             self.filter_state.date_range = (start, end) if start and end else None
         except ValueError:
             self.show_error("Invalid date format. Use YYYY-MM-DD")
@@ -318,7 +342,9 @@ class FileExplorer(BasePage):
 
             if self.filter_state.date_range:
                 start, end = self.filter_state.date_range
-                uploaded_query += " AND DATE(uf.upload_date) BETWEEN DATE(?) AND DATE(?)"
+                uploaded_query += (
+                    " AND DATE(uf.upload_date) BETWEEN DATE(?) AND DATE(?)"
+                )
                 pivot_query += " AND DATE(pt.creation_date) BETWEEN DATE(?) AND DATE(?)"
                 params.extend([start.isoformat(), end.isoformat()])
                 params.extend([start.isoformat(), end.isoformat()])
@@ -341,10 +367,14 @@ class FileExplorer(BasePage):
             # Combine queries based on file type filter
             if self.filter_state.file_type == "Uploaded":
                 final_query = uploaded_query
-                final_params = params[:len(params)//2]  # Use only first set of params
+                final_params = params[
+                    : len(params) // 2
+                ]  # Use only first set of params
             elif self.filter_state.file_type == "Pivot Tables":
                 final_query = pivot_query
-                final_params = params[len(params)//2:]  # Use only second set of params
+                final_params = params[
+                    len(params) // 2 :
+                ]  # Use only second set of params
             else:  # "All"
                 final_query = f"{uploaded_query} UNION ALL {pivot_query}"
                 final_params = params
@@ -373,44 +403,53 @@ class FileExplorer(BasePage):
         for file in files:
             try:
                 date = datetime.fromisoformat(file["upload_date"]).strftime("%Y-%m-%d")
-            except:
+            except ValueError:
                 date = "Unknown"
 
             # If file path exists and is valid
             file_path = file.get("file_path")
             if file_path and Path(file_path).exists():
-                self.file_list.insert("", "end", values=(
-                    file["original_filename"],
-                    file["portfolio"],
-                    file["funder"],
-                    file["file_type"],
-                    date,
-                    file["processing_status"]
-                ), tags=(str(file_path),))
+                self.file_list.insert(
+                    "",
+                    "end",
+                    values=(
+                        file["original_filename"],
+                        file["portfolio"],
+                        file["funder"],
+                        file["file_type"],
+                        date,
+                        file["processing_status"],
+                    ),
+                    tags=(str(file_path),),
+                )
+
     def sort_column(self, column):
-            """Sort treeview by column"""
-            items = [(self.file_list.set(item, column), item) for item in self.file_list.get_children("")]
-            
-            # Check if we're reversing the sort
-            reverse = False
-            if hasattr(self, "_sort_column") and self._sort_column == column:
-                reverse = not getattr(self, "_sort_reverse", False)
-            
-            # Store sort state
-            self._sort_column = column
-            self._sort_reverse = reverse
-            
-            # Sort items
-            items.sort(reverse=reverse)
-            for idx, (_, item) in enumerate(items):
-                self.file_list.move(item, "", idx)
-                
-            # Update column headers to show sort direction
-            for col in self.file_list["columns"]:
-                if col == column:
-                    self.file_list.heading(col, text=f"{col} {'↓' if reverse else '↑'}")
-                else:
-                    self.file_list.heading(col, text=col)
+        """Sort treeview by column"""
+        items = [
+            (self.file_list.set(item, column), item)
+            for item in self.file_list.get_children("")
+        ]
+
+        # Check if we're reversing the sort
+        reverse = False
+        if hasattr(self, "_sort_column") and self._sort_column == column:
+            reverse = not getattr(self, "_sort_reverse", False)
+
+        # Store sort state
+        self._sort_column = column
+        self._sort_reverse = reverse
+
+        # Sort items
+        items.sort(reverse=reverse)
+        for idx, (_, item) in enumerate(items):
+            self.file_list.move(item, "", idx)
+
+        # Update column headers to show sort direction
+        for col in self.file_list["columns"]:
+            if col == column:
+                self.file_list.heading(col, text=f"{col} {'↓' if reverse else '↑'}")
+            else:
+                self.file_list.heading(col, text=col)
 
     def on_file_selected(self, event):
         """Handle file selection"""
@@ -418,18 +457,18 @@ class FileExplorer(BasePage):
         if not selection:
             self.clear_preview()
             return
-            
+
         # Get file path from item tags
         item = selection[0]
         file_path = self.file_list.item(item)["tags"][0]
         if not file_path:
             self.clear_preview()
             return
-            
+
         self.current_file = Path(file_path)
         self.file_label.configure(text=self.current_file.name)
         self.export_button.configure(state="normal")
-        
+
         self.preview_file(self.current_file)
 
     def preview_file(self, file_path: Path):
@@ -439,7 +478,7 @@ class FileExplorer(BasePage):
             for item in self.preview_table.get_children():
                 self.preview_table.delete(item)
             self.preview_table["columns"] = ()
-            
+
             # Read file based on type
             if file_path.suffix.lower() == ".csv":
                 df = pd.read_csv(file_path)
@@ -447,29 +486,31 @@ class FileExplorer(BasePage):
                 df = pd.read_excel(file_path)
             else:
                 raise ValueError("Unsupported file type")
-                
+
             # Configure columns
             columns = list(df.columns)
             self.preview_table["columns"] = columns
-            
+
             # Hide the default first column (tree column)
             self.preview_table["show"] = "headings"
-            
+
             # Configure column headings and widths
             for col in columns:
                 self.preview_table.heading(col, text=col)
                 # Calculate column width based on data
                 max_width = max(
                     len(str(col)),
-                    df[col].astype(str).str.len().max() if len(df) > 0 else 0
+                    df[col].astype(str).str.len().max() if len(df) > 0 else 0,
                 )
-                self.preview_table.column(col, width=min(max_width * 10, 300))  # Scale width, max 300px
-                
+                self.preview_table.column(
+                    col, width=min(max_width * 10, 300)
+                )  # Scale width, max 300px
+
             # Add data rows (limit to first 1000 rows for performance)
             for idx, row in df.head(1000).iterrows():
                 values = [str(val) for val in row]
                 self.preview_table.insert("", "end", values=values)
-            
+
             # Show row count info
             total_rows = len(df)
             shown_rows = min(1000, total_rows)
@@ -477,28 +518,28 @@ class FileExplorer(BasePage):
                 self.file_label.configure(
                     text=f"{self.current_file.name} (Showing {shown_rows:,} of {total_rows:,} rows)"
                 )
-                
+
         except Exception as e:
             self.show_error(f"Error previewing file: {str(e)}")
 
     def export_file(self):
         """Export selected file to user-chosen location"""
-        if not hasattr(self, 'current_file'):
+        if not hasattr(self, "current_file"):
             return
-            
+
         # Get destination path
         file_types = [("All Files", "*.*")]
         if self.current_file.suffix.lower() == ".csv":
             file_types = [("CSV Files", "*.csv")] + file_types
         elif self.current_file.suffix.lower() == ".xlsx":
             file_types = [("Excel Files", "*.xlsx")] + file_types
-            
+
         dest_path = ctk.filedialog.asksaveasfilename(
             defaultextension=self.current_file.suffix,
             filetypes=file_types,
-            initialfile=self.current_file.name
+            initialfile=self.current_file.name,
         )
-        
+
         if dest_path:
             try:
                 shutil.copy2(self.current_file, dest_path)
@@ -517,9 +558,11 @@ class FileExplorer(BasePage):
     def show_error(self, message: str):
         """Show error message"""
         import tkinter.messagebox as tkmb
+
         tkmb.showerror("Error", message)
 
     def show_info(self, message: str):
         """Show info message"""
         import tkinter.messagebox as tkmb
+
         tkmb.showinfo("Information", message)
