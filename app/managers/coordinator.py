@@ -17,6 +17,7 @@ from core.data_processing.parsers.efin_parser import EfinParser
 from core.data_processing.parsers.bhb_parser import BHBParser
 from core.data_processing.parsers.acs_vesper_parser import AcsVesperParser
 from core.data_processing.parsers.clear_view_parser import ClearViewParser
+from core.data_processing.parsers.big_parser import BIGParser
 from .portfolio import Portfolio, PortfolioStructure
 from core.data_processing.excel.workbook_manager import WorkbookManager
 
@@ -58,6 +59,7 @@ class PortfolioCoordinator:
             "EFIN": EfinParser,
             "Kings": KingsBoomParser,
             "Vesper": AcsVesperParser,
+            "BIG": BIGParser,
         }
 
     @property

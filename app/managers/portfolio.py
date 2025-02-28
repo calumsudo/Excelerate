@@ -12,8 +12,8 @@ class Portfolio(Enum):
 class PortfolioStructure:
     """Configuration for portfolio structure and funders"""
 
-    # Updated to match exact names from parser classes
-    SHARED_FUNDERS = ["ACS", "BHB", "Boom", "Kings", "EFIN", "ClearView"]
+    # Updated to include BIG in shared funders
+    SHARED_FUNDERS = ["ACS", "BHB", "Boom", "Kings", "EFIN", "ClearView", "BIG"]
     ALDER_SPECIFIC_FUNDERS = ["Vesper"]
 
     @classmethod

@@ -23,6 +23,7 @@ class WorkbookManager:
         "EFIN": "EFin",
         "Kings": "Kings",
         "Vesper": "VSPR",
+        "BIG": "BIG",
     }
 
     def __init__(self, file_manager):

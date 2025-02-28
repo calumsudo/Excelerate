@@ -16,7 +16,7 @@ class EfinParser(BaseParser):
             "Payable Amt (Gross)",
             "Servicing Fee $",
             "Payable Amt (Net)",
-            "Payable Status",  # Added this required column
+            "Payable Status",
         ]
         self.column_types = {
             "Advance ID": str,
@@ -26,29 +26,49 @@ class EfinParser(BaseParser):
             "Payable Amt (Net)": float,
         }
 
+        # Add debugging counters
+        self.debug_stats = {
+            "total_rows": 0,
+            "rows_after_status_filter": 0,
+            "rows_after_amount_filter": 0,
+            "invalid_advance_ids": 0,
+            "zero_amount_rows": 0,
+            "status_distribution": {},
+            "processing_errors": [],
+        }
+
     def currency_to_float(self, value: any) -> float:
-        """Convert currency string to float."""
-        if pd.isna(value):
-            return 0.0
-        if isinstance(value, (int, float)):
-            return float(value)
-        if isinstance(value, str):
-            value = (
-                value.replace("$", "")
-                .replace(",", "")
-                .replace("(", "-")
-                .replace(")", "")
-                .replace('"', "")
-                .strip()
-            )
-            try:
-                return float(value) if value else 0.0
-            except ValueError:
+        """Convert currency string to float with debug logging."""
+        try:
+            if pd.isna(value):
                 return 0.0
-        return 0.0
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                value = (
+                    value.replace("$", "")
+                    .replace(",", "")
+                    .replace("(", "-")
+                    .replace(")", "")
+                    .replace('"', "")
+                    .strip()
+                )
+                try:
+                    return float(value) if value else 0.0
+                except ValueError:
+                    self.debug_stats["processing_errors"].append(
+                        f"Failed to convert value to float: {value}"
+                    )
+                    return 0.0
+            return 0.0
+        except Exception as e:
+            self.debug_stats["processing_errors"].append(
+                f"Error in currency_to_float: {str(e)} for value: {value}"
+            )
+            return 0.0
 
     def read_csv(self) -> pd.DataFrame:
-        """Read and perform initial processing of the CSV file"""
+        """Read and perform initial processing of the CSV file with enhanced debugging"""
         try:
             self.logger.info("Reading EFIN CSV file...")
 
@@ -59,6 +79,7 @@ class EfinParser(BaseParser):
             for encoding in encodings_to_try:
                 try:
                     df = pd.read_csv(self.file_path, encoding=encoding)
+                    self.logger.info(f"Successfully read file with {encoding} encoding")
                     break
                 except UnicodeDecodeError:
                     continue
@@ -66,10 +87,17 @@ class EfinParser(BaseParser):
             if df is None:
                 raise ValueError("Unable to read file with any supported encoding")
 
-            self.logger.info(f"Found {len(df)} rows in file")
+            # Update debug stats
+            self.debug_stats["total_rows"] = len(df)
+            self.debug_stats["status_distribution"] = (
+                df["Advance Status"].value_counts().to_dict()
+            )
 
-            # Convert Advance ID to string immediately
-            df["Advance ID"] = df["Advance ID"].astype(str)
+            # Log initial data statistics
+            self.logger.info(f"Initial row count: {len(df)}")
+            self.logger.info("Status distribution:")
+            for status, count in self.debug_stats["status_distribution"].items():
+                self.logger.info(f"  {status}: {count}")
 
             self._df = df
             return df
@@ -79,41 +107,79 @@ class EfinParser(BaseParser):
             raise
 
     def process_data(self) -> pd.DataFrame:
-        """Process EFIN data."""
+        """
+        Process EFIN data with fixes for White Rabbit portfolio.
+        Includes enhanced debugging and less restrictive filtering.
+        """
         try:
             if self._df is None:
                 raise ValueError("No data available to process")
 
             df = self._df.copy()
 
-            # Filter for valid transactions
-            valid_statuses = [
-                "Funded - In Repayment",
-                "FUNDED - ISSUE CORRECTED",
-                "FUNDED - MPI",
-            ]
-            status_mask = (
-                df["Advance Status"]
-                .str.upper()
-                .isin([s.upper() for s in valid_statuses])
-            )
-            df = df[status_mask]
+            # Log initial state
+            self.logger.info(f"Starting processing with {len(df)} rows")
+            self.debug_stats["total_rows"] = len(df)
 
-            self.logger.info(f"Found {len(df)} rows with valid status")
+            # Log status distribution before filtering
+            status_counts = df["Advance Status"].value_counts()
+            self.logger.info("\nInitial Status Distribution:")
+            for status, count in status_counts.items():
+                self.logger.info(f"  {status}: {count}")
 
-            # Clean Advance ID - ensure it's a string and remove any whitespace
+            # Remove any completely empty rows
+            df = df.dropna(how="all")
+            self.logger.info(f"Rows after removing empty rows: {len(df)}")
+
+            # Clean and validate Advance ID
             df["Advance ID"] = df["Advance ID"].astype(str).str.strip()
+            invalid_ids = df[df["Advance ID"].str.len() == 0]["Advance ID"]
+            self.debug_stats["invalid_advance_ids"] = len(invalid_ids)
 
-            # Convert currency columns to numeric
-            for col in ["Payable Amt (Gross)", "Servicing Fee $", "Payable Amt (Net)"]:
+            if not invalid_ids.empty:
+                self.logger.warning(f"Found {len(invalid_ids)} invalid Advance IDs")
+
+            df = df[df["Advance ID"].str.len() > 0]
+            self.logger.info(f"Rows after Advance ID validation: {len(df)}")
+
+            # Convert currency columns with detailed logging
+            currency_columns = [
+                "Payable Amt (Gross)",
+                "Servicing Fee $",
+                "Payable Amt (Net)",
+            ]
+            for col in currency_columns:
+                # Store original values for comparison
+                original_values = df[col].copy()
                 df[col] = df[col].apply(self.currency_to_float)
 
-            # Group by Advance ID and Business Name to get totals
-            grouped = df.groupby(["Advance ID", "Business Name"], as_index=False).agg(
+                # Log significant changes
+                significant_changes = (
+                    (df[col] != original_values)
+                    & (original_values.notna())
+                    & (df[col] != 0)
+                )
+
+                if significant_changes.any():
+                    self.logger.info(f"\nSignificant changes in {col}:")
+                    changed_rows = df[significant_changes]
+                    for idx, row in changed_rows.iterrows():
+                        self.logger.info(
+                            f"  Advance ID {row['Advance ID']}: "
+                            f"{original_values[idx]} -> {row[col]}"
+                        )
+
+            # Group by Advance ID only (not Business Name)
+            # This matches Excel's pivot table behavior
+            grouped = df.groupby("Advance ID", as_index=False).agg(
                 {
+                    "Business Name": "first",  # Take first business name
                     "Payable Amt (Net)": "sum",
                     "Servicing Fee $": "sum",
                     "Payable Amt (Gross)": "sum",
+                    "Advance Status": lambda x: ", ".join(
+                        sorted(set(x))
+                    ),  # Keep track of all statuses
                 }
             )
 
@@ -121,7 +187,7 @@ class EfinParser(BaseParser):
             for col in ["Payable Amt (Net)", "Servicing Fee $", "Payable Amt (Gross)"]:
                 grouped[col] = grouped[col].round(2)
 
-            # Create standardized DataFrame with correct column mapping
+            # Create standardized DataFrame
             processed_df = pd.DataFrame(
                 {
                     "Advance ID": grouped["Advance ID"],
@@ -134,8 +200,16 @@ class EfinParser(BaseParser):
                 }
             )
 
-            # Log processing details
-            self.logger.info(f"Processed {len(processed_df)} unique advances")
+            # Log processing summary
+            self.logger.info("\nProcessing Summary:")
+            self.logger.info(f"Initial row count: {self.debug_stats['total_rows']}")
+            self.logger.info(
+                f"Invalid Advance IDs found: {self.debug_stats['invalid_advance_ids']}"
+            )
+            self.logger.info(f"Final unique advances: {len(processed_df)}")
+
+            # Log financial summary
+            self.logger.info("\nFinancial Summary:")
             self.logger.info(
                 f"Total Gross: ${processed_df['Sum of Syn Gross Amount'].sum():,.2f}"
             )
@@ -146,10 +220,37 @@ class EfinParser(BaseParser):
                 f"Total Fees: ${processed_df['Total Servicing Fee'].sum():,.2f}"
             )
 
+            # Log any processing errors
+            if self.debug_stats["processing_errors"]:
+                self.logger.warning("\nProcessing Errors:")
+                for error in self.debug_stats["processing_errors"]:
+                    self.logger.warning(f"  {error}")
+
+            # Add additional validation checks
+            # Check for expected relationships between amounts
+            amount_mismatches = processed_df[
+                (
+                    processed_df["Sum of Syn Gross Amount"]
+                    != processed_df["Sum of Syn Net Amount"]
+                    + processed_df["Total Servicing Fee"]
+                ).round(2)
+            ]
+
+            if not amount_mismatches.empty:
+                self.logger.warning("\nAmount Relationship Mismatches Found:")
+                for _, row in amount_mismatches.iterrows():
+                    self.logger.warning(
+                        f"  Advance ID {row['Advance ID']}: "
+                        f"Gross ({row['Sum of Syn Gross Amount']}) != "
+                        f"Net ({row['Sum of Syn Net Amount']}) + "
+                        f"Fees ({row['Total Servicing Fee']})"
+                    )
+
             return processed_df
 
         except Exception as e:
             self.logger.error(f"Error processing EFIN data: {str(e)}")
+            self.debug_stats["processing_errors"].append(str(e))
             raise
 
     def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
@@ -176,7 +277,7 @@ class EfinParser(BaseParser):
             total_net = processed_df["Sum of Syn Net Amount"].sum()
             total_fee = processed_df["Total Servicing Fee"].sum()
 
-            # Create pivot table with standardized column names
+            # Create pivot table
             pivot = self.create_pivot_table(
                 df=processed_df,
                 gross_col="Sum of Syn Gross Amount",

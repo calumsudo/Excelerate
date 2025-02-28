@@ -53,7 +53,7 @@ class FileExplorer(BasePage):
         search_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
 
         self.search_var = ctk.StringVar()
-        self.search_var.trace("w", self.on_search_changed)
+        self.search_var.trace_add("write", self.on_search_changed)
 
         search_entry = ctk.CTkEntry(
             search_frame,
