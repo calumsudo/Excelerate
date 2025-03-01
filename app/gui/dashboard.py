@@ -1,5 +1,6 @@
 # app/gui/dashboard.py
 
+import tkinter as tk
 import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD
 from typing import Optional, Dict
@@ -13,7 +14,8 @@ from config.system_config import SystemConfig
 from managers.file_manager import PortfolioFileManager
 from managers.coordinator import PortfolioCoordinator
 from .base_window import BasePage
-
+from managers.portfolio import Portfolio
+import logging
 
 class Dashboard(TkinterDnD.Tk):
     def __init__(self):
@@ -26,6 +28,9 @@ class Dashboard(TkinterDnD.Tk):
         self.title("Excelerate")
         self.geometry("1200x800")
         self.minsize(800, 600)
+        
+        # Add menu
+        self.setup_menu()  # Add this line
 
         # Configure grid
         self.grid_rowconfigure(2, weight=1)  # Updated to account for date selector
@@ -52,6 +57,46 @@ class Dashboard(TkinterDnD.Tk):
 
         # Show default page
         self.show_page("alder")
+        
+        # Setup logger
+        self.logger = logging.getLogger(__name__)
+
+
+    def setup_menu(self):
+        """Create application menu system"""
+        # Create menu bar
+        self.menu_bar = tk.Menu(self)
+        self.config(menu=self.menu_bar)
+        
+        # File menu
+        file_menu = tk.Menu(self.menu_bar, tearoff=0)
+        self.menu_bar.add_cascade(label="File", menu=file_menu)
+        
+        # Export options
+        export_menu = tk.Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="Export", menu=export_menu)
+        export_menu.add_command(label="Export Alder Portfolio to Desktop", 
+                            command=lambda: self.export_specific_portfolio(Portfolio.ALDER))
+        export_menu.add_command(label="Export White Rabbit Portfolio to Desktop", 
+                            command=lambda: self.export_specific_portfolio(Portfolio.WHITE_RABBIT))
+        
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self.quit)
+
+    def export_specific_portfolio(self, portfolio: Portfolio):
+        """Export a specific portfolio workbook to desktop"""
+        try:
+            result = self.file_manager.export_portfolio_workbook(portfolio)
+            if result:
+                import tkinter.messagebox as tkmb
+                tkmb.showinfo("Success", f"Portfolio workbook exported to:\n{result}")
+        except Exception as e:
+            import tkinter.messagebox as tkmb
+            tkmb.showerror("Error", f"Failed to export portfolio: {str(e)}")
+            self.geometry("1200x800")
+            self.minsize(800, 600)
+
+
 
     def _setup_system_components(self):
         """Initialize file management and coordination systems"""
@@ -122,7 +167,15 @@ class Dashboard(TkinterDnD.Tk):
     def _on_date_changed(self, new_date: datetime):
         """Handle date selection changes"""
         self.selected_date = new_date
-        # Update any necessary components or trigger reloads
+        # Log the selected date
+        self.logger.info(f"Date changed to: {new_date.strftime('%Y-%m-%d')}")
+        
+        # Update any components that depend on the selected date
+        if self.current_page:
+            # Notify current page of date change if it has a method for it
+            if hasattr(self.current_page, 'update_for_date') and callable(getattr(self.current_page, 'update_for_date')):
+                self.current_page.update_for_date(new_date)
+
 
     def get_selected_date(self) -> datetime:
         """Get the currently selected processing date"""
@@ -150,3 +203,12 @@ class Dashboard(TkinterDnD.Tk):
         """Show settings page"""
         self.show_page("settings")
         pass
+
+    def export_current_portfolio(self):
+        """Export the currently active portfolio workbook to desktop"""
+        if not self.current_page or not hasattr(self.current_page, 'portfolio'):
+            return
+            
+        portfolio = self.current_page.portfolio
+        if portfolio:
+            self.file_manager.export_portfolio_workbook(portfolio)

@@ -28,6 +28,14 @@ class WhiteRabbitPage(BasePage):
             font=("Helvetica", 24, "bold"),
         ).pack(side="left", padx=10)
 
+        export_btn = ctk.CTkButton(
+            header,
+            text="Export Workbook to Desktop", 
+            command=self.export_portfolio_to_desktop,
+            width=200
+        )
+        export_btn.pack(side="right", padx=10, pady=10)
+
         # Sidebar
         sidebar = ctk.CTkFrame(self, width=200)
         sidebar.grid(row=1, column=0, sticky="ns", padx=(10, 5), pady=5)

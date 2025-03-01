@@ -614,9 +614,7 @@ class PortfolioFileManager:
             conn.row_factory = sqlite3.Row
             return [dict(row) for row in conn.execute(query, params).fetchall()]
 
-    def save_portfolio_workbook(
-        self, portfolio: Portfolio, workbook_path: Path
-    ) -> None:
+    def save_portfolio_workbook(self, portfolio: Portfolio, workbook_path: Path) -> None:
         """Save a portfolio's Excel workbook and populate merchant database."""
         try:
             # Create portfolio config directory if it doesn't exist
@@ -626,7 +624,13 @@ class PortfolioFileManager:
             # Copy workbook to config directory with standardized name
             import shutil
 
-            new_path = config_dir / f"{portfolio.value.lower()}_portfolio.xlsx"
+            # Use cleaner naming convention - wr_portfolio.xlsx for White Rabbit
+            if portfolio == Portfolio.WHITE_RABBIT:
+                filename = "wr_portfolio.xlsx"
+            else:
+                filename = f"{portfolio.value.lower()}_portfolio.xlsx"
+                
+            new_path = config_dir / filename
             shutil.copy2(workbook_path, new_path)
 
             # Initialize WorkbookManager
@@ -652,10 +656,54 @@ class PortfolioFileManager:
 
     def get_portfolio_workbook_path(self, portfolio: Portfolio) -> Optional[Path]:
         """Get the path to a portfolio's Excel workbook if it exists."""
-        workbook_path = (
-            self.base_dir
-            / portfolio.value
-            / "config"
-            / f"{portfolio.value.lower()}_portfolio.xlsx"
-        )
+        if portfolio == Portfolio.WHITE_RABBIT:
+            filename = "wr_portfolio.xlsx"
+        else:
+            filename = f"{portfolio.value.lower()}_portfolio.xlsx"
+            
+        workbook_path = self.base_dir / portfolio.value / "config" / filename
         return workbook_path if workbook_path.exists() else None
+    
+
+    def export_portfolio_workbook(self, portfolio: Portfolio, dest_path: Optional[Path] = None) -> Optional[Path]:
+        """
+        Export a portfolio's Excel workbook to the specified destination or Desktop.
+        
+        Args:
+            portfolio: Portfolio enum value
+            dest_path: Optional destination path, defaults to Desktop
+            
+        Returns:
+            Path to the exported file if successful, None otherwise
+        """
+        try:
+            # Get the source workbook path
+            source_path = self.get_portfolio_workbook_path(portfolio)
+            if not source_path or not source_path.exists():
+                self.logger.error(f"Portfolio workbook for {portfolio.value} not found")
+                return None
+                
+            # Determine destination path
+            if dest_path is None:
+                # Default to Desktop
+                import os
+                desktop_path = Path(os.path.expanduser("~/Desktop"))
+                
+                # Use standardized naming for export
+                if portfolio == Portfolio.WHITE_RABBIT:
+                    export_filename = "wr_portfolio.xlsx"
+                else:
+                    export_filename = f"{portfolio.value.lower()}_portfolio.xlsx"
+                    
+                dest_path = desktop_path / export_filename
+                
+            # Copy the file
+            import shutil
+            shutil.copy2(source_path, dest_path)
+            
+            self.logger.info(f"Exported {portfolio.value} portfolio workbook to {dest_path}")
+            return dest_path
+            
+        except Exception as e:
+            self.logger.error(f"Error exporting portfolio workbook: {str(e)}")
+            return None
