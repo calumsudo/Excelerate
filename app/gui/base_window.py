@@ -32,21 +32,25 @@ class BasePage(ctk.CTkFrame):
     def on_leave(self):
         """Called when page is hidden"""
         pass
-    
+
     def export_portfolio_to_desktop(self):
         """Export portfolio workbook to desktop"""
         if self.portfolio is None:
             tkmb.showerror("Error", "No portfolio selected")
             return
-            
+
         try:
             # Use file_manager to export the file
-            exported_path = self.controller.file_manager.export_portfolio_workbook(self.portfolio)
-            
+            exported_path = self.controller.file_manager.export_portfolio_workbook(
+                self.portfolio
+            )
+
             if exported_path:
-                tkmb.showinfo("Success", f"Portfolio workbook exported to:\n{exported_path}")
+                tkmb.showinfo(
+                    "Success", f"Portfolio workbook exported to:\n{exported_path}"
+                )
             else:
                 tkmb.showerror("Error", "Failed to export portfolio workbook")
-                
+
         except Exception as e:
             tkmb.showerror("Error", f"Error exporting portfolio: {str(e)}")

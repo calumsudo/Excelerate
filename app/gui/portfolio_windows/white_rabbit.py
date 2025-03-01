@@ -30,9 +30,9 @@ class WhiteRabbitPage(BasePage):
 
         export_btn = ctk.CTkButton(
             header,
-            text="Export Workbook to Desktop", 
+            text="Export Workbook to Desktop",
             command=self.export_portfolio_to_desktop,
-            width=200
+            width=200,
         )
         export_btn.pack(side="right", padx=10, pady=10)
 
