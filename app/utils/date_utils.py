@@ -9,15 +9,12 @@ def get_most_recent_friday(from_date: datetime = None) -> datetime:
     if from_date is None:
         from_date = datetime.now()
 
-    # Get days until previous Friday (Friday is 4 in Python's datetime)
-    days_until_friday = (from_date.weekday() - 4) % 7
-    if (
-        days_until_friday == 0 and from_date.hour >= 0
-    ):  # If it's Friday but after midnight
-        days_until_friday = 7
-
-    # Subtract days to get to previous Friday
-    friday = from_date - timedelta(days=days_until_friday)
+    # Get days since most recent Friday (Friday is 4 in Python's datetime)
+    # If today is Friday, days_since_friday will be 0
+    days_since_friday = (from_date.weekday() - 4) % 7
+    
+    # Subtract days to get to most recent Friday
+    friday = from_date - timedelta(days=days_since_friday)
 
     # Set time to midnight
     return friday.replace(hour=0, minute=0, second=0, microsecond=0)
