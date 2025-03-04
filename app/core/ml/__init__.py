@@ -1,5 +1,3 @@
-from .funder_classifier import EnhancedFunderClassifier
+from .funder_classifier import FunderClassifier
 
-__all__ = [
-    "EnhancedFunderClassifier"
-]
+__all__ = ["FunderClassifier"]

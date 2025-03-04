@@ -17,3 +17,5 @@ excelerate
 *.json
 *.DS_Store
 .venv
+
+/tkdnd

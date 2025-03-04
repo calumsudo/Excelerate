@@ -3,23 +3,22 @@
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional
-from datetime import datetime
+
 
 class DatabaseManager:
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self.logger = logging.getLogger(__name__)
-        
+
         # Initialize database
         self._init_database()
-        
+
     def _init_database(self):
         """Initialize all database tables and indexes."""
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Create merchant tracking table
-                conn.execute('''
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS merchant_tracking (
                         advance_id TEXT PRIMARY KEY,
                         funder TEXT NOT NULL,
@@ -28,10 +27,10 @@ class DatabaseManager:
                         first_seen_date TEXT NOT NULL,
                         last_updated TEXT NOT NULL
                     )
-                ''')
-                
+                """)
+
                 # Create uploaded_files table
-                conn.execute('''
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS uploaded_files (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         original_filename TEXT,
@@ -48,10 +47,10 @@ class DatabaseManager:
                         primary_file_id INTEGER,
                         FOREIGN KEY (primary_file_id) REFERENCES uploaded_files (id)
                     )
-                ''')
-                
+                """)
+
                 # Create pivot_tables table
-                conn.execute('''
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS pivot_tables (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         source_file_id INTEGER,
@@ -63,10 +62,10 @@ class DatabaseManager:
                         file_path TEXT,
                         FOREIGN KEY (source_file_id) REFERENCES uploaded_files (id)
                     )
-                ''')
-                
+                """)
+
                 # Create processing_totals table
-                conn.execute('''
+                conn.execute("""
                     CREATE TABLE IF NOT EXISTS processing_totals (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         file_id INTEGER,
@@ -77,21 +76,21 @@ class DatabaseManager:
                         created_at TEXT,
                         FOREIGN KEY (file_id) REFERENCES uploaded_files (id)
                     )
-                ''')
-                
+                """)
+
                 # Create indexes
-                conn.execute('''
+                conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_merchant_portfolio_funder 
                     ON merchant_tracking(portfolio, funder)
-                ''')
-                
-                conn.execute('''
+                """)
+
+                conn.execute("""
                     CREATE INDEX IF NOT EXISTS idx_uploaded_files_portfolio_funder 
                     ON uploaded_files(portfolio, funder)
-                ''')
-                
+                """)
+
                 self.logger.info("Database initialization completed successfully")
-                
+
         except Exception as e:
             self.logger.error(f"Error initializing database: {str(e)}")
             raise
@@ -105,18 +104,18 @@ class DatabaseManager:
                     "merchant_tracking",
                     "processing_totals",
                     "pivot_tables",
-                    "uploaded_files"
+                    "uploaded_files",
                 ]
-                
+
                 for table in tables:
                     conn.execute(f"DROP TABLE IF EXISTS {table}")
-                    
+
                 self.logger.info("Existing tables dropped")
-                
+
                 # Reinitialize database
                 self._init_database()
                 self.logger.info("Database reset completed successfully")
-                
+
         except Exception as e:
             self.logger.error(f"Error resetting database: {str(e)}")
             raise
@@ -130,23 +129,23 @@ class DatabaseManager:
                     "merchant_tracking",
                     "uploaded_files",
                     "pivot_tables",
-                    "processing_totals"
+                    "processing_totals",
                 }
-                
+
                 cursor = conn.execute("""
                     SELECT name FROM sqlite_master 
                     WHERE type='table'
                 """)
                 existing_tables = {row[0] for row in cursor.fetchall()}
-                
+
                 missing_tables = required_tables - existing_tables
                 if missing_tables:
                     self.logger.error(f"Missing tables: {missing_tables}")
                     return False
-                    
+
                 self.logger.info("Database verification completed successfully")
                 return True
-                
+
         except Exception as e:
             self.logger.error(f"Error verifying database: {str(e)}")
             return False

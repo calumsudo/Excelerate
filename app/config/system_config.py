@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Dict
 
+
 class SystemConfig:
     @staticmethod
     def get_system_info() -> Dict:
@@ -12,7 +13,7 @@ class SystemConfig:
             "os": platform.system(),
             "release": platform.release(),
             "version": platform.version(),
-            "machine": platform.machine()
+            "machine": platform.machine(),
         }
 
     @staticmethod
@@ -21,7 +22,7 @@ class SystemConfig:
         home = Path.home()
 
         if system == "Windows":
-            app_dir = Path(os.getenv('APPDATA')) / "Excelerate"
+            app_dir = Path(os.getenv("APPDATA")) / "Excelerate"
         elif system == "Darwin":  # macOS
             app_dir = home / "Library/Application Support/Excelerate"
         else:  # Linux

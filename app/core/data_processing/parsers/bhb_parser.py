@@ -2,8 +2,9 @@
 
 from pathlib import Path
 import pandas as pd
-from typing import Tuple, Optional, Dict
+from typing import Tuple, Optional
 from .base_parser import BaseParser
+
 
 class BHBParser(BaseParser):
     def __init__(self, file_path: Path):
@@ -18,14 +19,14 @@ class BHBParser(BaseParser):
             "Fee",
             "Res. Commission",
             "Net Payment Amount",
-            "Balance"
+            "Balance",
         ]
         self.column_types = {
             "Deal ID": str,
             "Deal Name": str,
             "Participator Gross Amount": float,
             "Fee": float,
-            "Net Payment Amount": float
+            "Net Payment Amount": float,
         }
 
     def currency_to_float(self, value: any) -> float:
@@ -45,16 +46,20 @@ class BHBParser(BaseParser):
         try:
             # Read the file first
             if self._df is None:
-                if self.file_path.suffix.lower() == '.xlsx':
+                if self.file_path.suffix.lower() == ".xlsx":
                     self._df = pd.read_excel(self.file_path, sheet_name="Sheet1")
-                elif self.file_path.suffix.lower() == '.csv':
-                    self._df = pd.read_csv(self.file_path, encoding='utf-8')
+                elif self.file_path.suffix.lower() == ".csv":
+                    self._df = pd.read_csv(self.file_path, encoding="utf-8")
                 else:
-                    return False, "Unsupported file format. Please provide an XLSX or CSV file."
+                    return (
+                        False,
+                        "Unsupported file format. Please provide an XLSX or CSV file.",
+                    )
 
             # Validate original columns
-            missing_columns = [col for col in self.required_columns 
-                             if col not in self._df.columns]
+            missing_columns = [
+                col for col in self.required_columns if col not in self._df.columns
+            ]
             if missing_columns:
                 return False, f"Missing columns: {', '.join(missing_columns)}"
 
@@ -67,23 +72,29 @@ class BHBParser(BaseParser):
         """Process the data after validation"""
         try:
             df = self._df.copy()
-            
+
             # Filter out non-numeric Deal IDs
             df = df[pd.to_numeric(df["Deal ID"], errors="coerce").notnull()]
 
             # Convert currency columns to float
-            df["Participator Gross Amount"] = df["Participator Gross Amount"].apply(self.currency_to_float)
-            df["Net Payment Amount"] = df["Net Payment Amount"].apply(self.currency_to_float)
+            df["Participator Gross Amount"] = df["Participator Gross Amount"].apply(
+                self.currency_to_float
+            )
+            df["Net Payment Amount"] = df["Net Payment Amount"].apply(
+                self.currency_to_float
+            )
             df["Fee"] = df["Fee"].apply(self.currency_to_float)
 
             # Create standardized DataFrame
-            processed_df = pd.DataFrame({
-                "Advance ID": df["Deal ID"],
-                "Merchant Name": df["Deal Name"],
-                "Gross Payment": df["Participator Gross Amount"],
-                "Fees": df["Fee"].abs(),  # Use absolute value of Fee
-                "Net": df["Net Payment Amount"]
-            })
+            processed_df = pd.DataFrame(
+                {
+                    "Advance ID": df["Deal ID"],
+                    "Merchant Name": df["Deal Name"],
+                    "Gross Payment": df["Participator Gross Amount"],
+                    "Fees": df["Fee"].abs(),  # Use absolute value of Fee
+                    "Net": df["Net Payment Amount"],
+                }
+            )
 
             self._df = processed_df
             return processed_df
@@ -113,7 +124,7 @@ class BHBParser(BaseParser):
                 gross_col="Gross Payment",
                 net_col="Net",
                 fee_col="Fees",
-                index=["Advance ID", "Merchant Name"]
+                index=["Advance ID", "Merchant Name"],
             )
 
             return pivot, total_gross, total_net, total_fee, None

@@ -2,23 +2,28 @@
 
 from pathlib import Path
 import pandas as pd
-from typing import Tuple, Optional, Dict, List, Union
+from typing import Tuple, Optional, List, Union
 from .base_parser import BaseParser
+
 
 class ClearViewParser(BaseParser):
     def __init__(self, file_path: Union[Path, List[Path]]):
         """
         Initialize the ClearView parser with one or more file paths.
-        
+
         Args:
             file_path: Either a single Path or a list of Paths to ClearView reports
         """
         # Store all file paths
-        self.all_file_paths = [Path(file_path)] if isinstance(file_path, (str, Path)) else [Path(p) for p in file_path]
-        
+        self.all_file_paths = (
+            [Path(file_path)]
+            if isinstance(file_path, (str, Path))
+            else [Path(p) for p in file_path]
+        )
+
         # Initialize base class with first file path to maintain compatibility
         super().__init__(self.all_file_paths[0])
-        
+
         self.funder_name = "ClearView"
         self.required_columns = [
             "Last Merchant Cleared Date",
@@ -34,26 +39,28 @@ class ClearViewParser(BaseParser):
             "Syn Cleared Date",
             "Syndicated Amt",
             "Syndicate Purchase Price",
-            "Syndicate Net RTR Remain"
+            "Syndicate Net RTR Remain",
         ]
         self.column_types = {
-            'AdvanceID': str,
-            'Syn Gross Amount': float,
-            'Syn Net Amount': float
+            "AdvanceID": str,
+            "Syn Gross Amount": float,
+            "Syn Net Amount": float,
         }
 
         self._combined_df = None
 
         # Log initialization
-        self.logger.info(f"Initializing ClearView parser with {len(self.all_file_paths)} files")
+        self.logger.info(
+            f"Initializing ClearView parser with {len(self.all_file_paths)} files"
+        )
         for path in self.all_file_paths:
             self.logger.info(f"File to process: {path}")
-        
+
     @property
     def file_names(self) -> str:
         """Return comma-separated list of file names for logging."""
         return ", ".join(f.name for f in self.all_file_paths)
-    
+
     @property
     def name(self) -> str:
         """Return name property for compatibility with test framework."""
@@ -88,8 +95,12 @@ class ClearViewParser(BaseParser):
             for file_path in self.all_file_paths:
                 df = pd.read_csv(file_path)
                 self.logger.info(f"Reading file {file_path.name}")
-                self.logger.info(f"Sample AdvanceIDs: {df['AdvanceID'].head().tolist()}")
-                self.logger.info(f"Sample amounts: {df['Syn Net Amount'].head().tolist()}")
+                self.logger.info(
+                    f"Sample AdvanceIDs: {df['AdvanceID'].head().tolist()}"
+                )
+                self.logger.info(
+                    f"Sample amounts: {df['Syn Net Amount'].head().tolist()}"
+                )
                 all_data.append(df)
             combined = pd.concat(all_data, ignore_index=True)
             self._df = combined
@@ -104,11 +115,11 @@ class ClearViewParser(BaseParser):
             for file_path in self.all_file_paths:
                 encodings_to_try = [
                     self.detect_encoding(),
-                    'utf-8',
-                    'cp1252',
-                    'iso-8859-1'
+                    "utf-8",
+                    "cp1252",
+                    "iso-8859-1",
                 ]
-                
+
                 df = None
                 for encoding in encodings_to_try:
                     try:
@@ -116,15 +127,19 @@ class ClearViewParser(BaseParser):
                         break
                     except UnicodeDecodeError:
                         continue
-                
+
                 if df is None:
                     return False, f"Unable to read {file_path} with any encoding"
-                
+
                 # Check for required columns
-                missing_columns = [col for col in self.required_columns 
-                                if col not in df.columns]
+                missing_columns = [
+                    col for col in self.required_columns if col not in df.columns
+                ]
                 if missing_columns:
-                    return False, f"Missing columns in {file_path.name}: {', '.join(missing_columns)}"
+                    return (
+                        False,
+                        f"Missing columns in {file_path.name}: {', '.join(missing_columns)}",
+                    )
 
             return True, ""
 
@@ -137,48 +152,56 @@ class ClearViewParser(BaseParser):
             combined = self._df.copy()
 
             # Clean IDs
-            combined['AdvanceID'] = pd.to_numeric(combined['AdvanceID'], errors='coerce')
-            combined.dropna(subset=['AdvanceID'], inplace=True)
-            combined['AdvanceID'] = combined['AdvanceID'].astype(int).astype(str)
+            combined["AdvanceID"] = pd.to_numeric(
+                combined["AdvanceID"], errors="coerce"
+            )
+            combined.dropna(subset=["AdvanceID"], inplace=True)
+            combined["AdvanceID"] = combined["AdvanceID"].astype(int).astype(str)
 
             # Convert amounts and handle zeros
-            for col in ['Syn Gross Amount', 'Syn Net Amount']:
+            for col in ["Syn Gross Amount", "Syn Net Amount"]:
                 combined[col] = pd.to_numeric(
-                    combined[col].astype(str).replace('[,$()]', '', regex=True).replace('', '0'),
-                    errors='coerce'
+                    combined[col]
+                    .astype(str)
+                    .replace("[,$()]", "", regex=True)
+                    .replace("", "0"),
+                    errors="coerce",
                 ).fillna(0.0)
                 combined[col] = combined[col].round(2)
 
-
             # Exclude rows where both amounts are zero
             combined = combined[
-                (combined['Syn Gross Amount'] != 0.0) | (combined['Syn Net Amount'] != 0.0)
+                (combined["Syn Gross Amount"] != 0.0)
+                | (combined["Syn Net Amount"] != 0.0)
             ]
 
             # Group and sum
-            grouped = combined.groupby('AdvanceID', as_index=False).agg({
-                'Syn Gross Amount': 'sum',
-                'Syn Net Amount': 'sum'
-            })
+            grouped = combined.groupby("AdvanceID", as_index=False).agg(
+                {"Syn Gross Amount": "sum", "Syn Net Amount": "sum"}
+            )
 
             # Calculate Total Servicing Fee with decimals
-            grouped['Total Servicing Fee'] = (grouped['Syn Gross Amount'] - grouped['Syn Net Amount']).abs().round(2)
+            grouped["Total Servicing Fee"] = (
+                (grouped["Syn Gross Amount"] - grouped["Syn Net Amount"]).abs().round(2)
+            )
 
-            processed_df = pd.DataFrame({
-                "Advance ID": grouped['AdvanceID'],
-                "Merchant Name": grouped['AdvanceID'],  # Replace with actual merchant names if available
-                "Sum of Syn Gross Amount": grouped['Syn Gross Amount'],
-                "Sum of Syn Net Amount": grouped['Syn Net Amount'],
-                "Total Servicing Fee": grouped['Total Servicing Fee']
-            })
+            processed_df = pd.DataFrame(
+                {
+                    "Advance ID": grouped["AdvanceID"],
+                    "Merchant Name": grouped[
+                        "AdvanceID"
+                    ],  # Replace with actual merchant names if available
+                    "Sum of Syn Gross Amount": grouped["Syn Gross Amount"],
+                    "Sum of Syn Net Amount": grouped["Syn Net Amount"],
+                    "Total Servicing Fee": grouped["Total Servicing Fee"],
+                }
+            )
 
             return processed_df
 
         except Exception as e:
             self.logger.error(f"Processing error: {str(e)}")
             raise
-
-
 
     def process(self) -> Tuple[pd.DataFrame, float, float, float, Optional[str]]:
         try:
@@ -210,7 +233,7 @@ class ClearViewParser(BaseParser):
                 gross_col="Sum of Syn Gross Amount",
                 net_col="Sum of Syn Net Amount",
                 fee_col="Total Servicing Fee",
-                index=["Advance ID", "Merchant Name"]
+                index=["Advance ID", "Merchant Name"],
             )
 
             return pivot, total_gross, total_net, total_fee, None

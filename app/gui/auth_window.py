@@ -1,13 +1,12 @@
-
-
 import customtkinter as ctk
 from PIL import Image
 from pathlib import Path
 from ..core.auth.ms_auth import MSAuthManager
 
+
 class AuthWindow(ctk.CTkFrame):
     """Enhanced version of your existing authentication UI"""
-    
+
     def __init__(self, master, config_dir: Path, auth_callback):
         super().__init__(master)
         self.config_dir = config_dir
@@ -24,9 +23,7 @@ class AuthWindow(ctk.CTkFrame):
         self.auth_status_label.pack(pady=20)
 
         self.authenticate_button = ctk.CTkButton(
-            self, 
-            text="Authenticate", 
-            command=self.authenticate
+            self, text="Authenticate", command=self.authenticate
         )
         self.authenticate_button.pack(pady=10)
 

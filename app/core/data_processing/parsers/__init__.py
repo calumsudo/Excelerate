@@ -11,5 +11,5 @@ __all__ = [
     "EfinParser",
     "BHBParser",
     "AcsVesperParser",
-    "ClearViewParser"
+    "ClearViewParser",
 ]
